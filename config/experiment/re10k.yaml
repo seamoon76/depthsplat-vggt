@@ -36,7 +36,7 @@ loss:
 
 dataset: 
   image_shape: [256, 256]
-  roots: [datasets/re10k]
+  roots: [../re10k]
   near: 0.5
   far: 100.
   baseline_scale_bounds: false

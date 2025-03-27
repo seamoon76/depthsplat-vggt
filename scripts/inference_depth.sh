@@ -25,7 +25,7 @@ output_dir=outputs/depthsplat-depth-base-re10k
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=dl3dv \
 dataset.test_chunk_interval=10 \
 mode=test \
-dataset.roots=[datasets/re10k] \
+dataset.roots=[../re10k] \
 dataset/view_sampler=evaluation \
 dataset.view_sampler.num_context_views=6 \
 dataset.view_sampler.index_path=assets/re10k_ctx_6v_video.json \
