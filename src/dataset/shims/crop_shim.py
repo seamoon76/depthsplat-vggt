@@ -5,7 +5,7 @@ from jaxtyping import Float
 from PIL import Image
 from torch import Tensor
 import torch.nn.functional as F
-
+import pdb
 from ..types import AnyExample, AnyViews
 
 
@@ -79,6 +79,8 @@ def rescale_and_crop(
 ):
     *_, h_in, w_in = images.shape
     h_out, w_out = shape
+    # print(f"h_in:{h_in},w_in:{w_in}")
+    # print(f"h_out:{h_out},w_out:{w_out}")
     assert h_out <= h_in and w_out <= w_in
 
     scale_factor = max(h_out / h_in, w_out / w_in)

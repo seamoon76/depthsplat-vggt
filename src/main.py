@@ -17,7 +17,8 @@ from pytorch_lightning.callbacks import (
 from pytorch_lightning.loggers.wandb import WandbLogger
 
 from pytorch_lightning.plugins.environments import LightningEnvironment
-
+from safetensors.torch import load_file
+from vggt.models.vggt import VGGT
 
 # Configure beartype and jaxtyping.
 with install_import_hook(
@@ -150,7 +151,15 @@ def train(cfg_dict: DictConfig):
     torch.manual_seed(cfg_dict.seed + trainer.global_rank)
 
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)
-
+    vggt_device = "cuda" if torch.cuda.is_available() else "cpu"
+    vggt_dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+    # init vggt
+    vggt_model = VGGT()
+    local_model_path = "/work/courses/3dv/35/vggt/models--facebook--VGGT-1B/snapshots/860abec7937da0a4c03c41d3c269c366e82abdf9/model.safetensors"
+    vggt_state_dict = load_file(local_model_path)
+    vggt_model.load_state_dict(vggt_state_dict)
+    vggt_model.eval()
+    vggt_model = vggt_model.to(vggt_device)
     model_wrapper = ModelWrapper(
         cfg.optimizer,
         cfg.test,
@@ -159,6 +168,7 @@ def train(cfg_dict: DictConfig):
         encoder_visualizer,
         get_decoder(cfg.model.decoder, cfg.dataset),
         get_losses(cfg.loss),
+        #vggt_model,
         step_tracker,
         eval_data_cfg=(
             None if eval_cfg is None else eval_cfg.dataset

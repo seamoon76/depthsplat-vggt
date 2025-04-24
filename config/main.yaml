@@ -24,7 +24,7 @@ data_loader:
     batch_size: 4
     seed: 1234
   test:
-    num_workers: 2
+    num_workers: 1
     persistent_workers: false
     batch_size: 1
     seed: 2345
@@ -48,7 +48,7 @@ checkpointing:
   pretrained_monodepth: null
   pretrained_mvdepth: null
   pretrained_depth: null
-  no_strict_load: false
+  no_strict_load: true
   resume: false
 
 train:

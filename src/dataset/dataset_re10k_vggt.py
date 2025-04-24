@@ -4,7 +4,7 @@ from functools import cached_property
 from io import BytesIO
 from pathlib import Path
 from typing import Literal, Optional
-import pdb
+
 import numpy as np
 import torch
 import torchvision.transforms as tf
@@ -13,14 +13,14 @@ from jaxtyping import Float, UInt8
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import IterableDataset
-import pdb
+from vggt.models.vggt import VGGT
+from safetensors.torch import load_file
 from ..geometry.projection import get_fov
 from .dataset import DatasetCfgCommon
 from .shims.augmentation_shim import apply_augmentation_shim
 from .shims.crop_shim import apply_crop_shim
 from .types import Stage
 from .view_sampler import ViewSampler
-
 
 @dataclass
 class DatasetRE10kCfg(DatasetCfgCommon):
@@ -51,6 +51,7 @@ class DatasetRE10k(IterableDataset):
     chunks: list[Path]
     near: float = 0.1
     far: float = 1000.0
+    
 
     def __init__(
         self,
@@ -68,7 +69,6 @@ class DatasetRE10k(IterableDataset):
         if cfg.far != -1:
             self.far = cfg.far
 
-        self.debug=True
         # Collect chunks.
         self.chunks = []
         for i, root in enumerate(cfg.roots):
@@ -81,8 +81,6 @@ class DatasetRE10k(IterableDataset):
                 root_chunks = sorted(
                     [path for path in root.iterdir() if path.suffix == ".torch"]
                 )
-            if self.debug:
-                root_chunks = [root_chunks[0]]
 
             self.chunks.extend(root_chunks)
         if self.cfg.overfit_to_scene is not None:
@@ -91,6 +89,18 @@ class DatasetRE10k(IterableDataset):
         if self.stage == "test":
             # testing on a subset for fast speed
             self.chunks = self.chunks[::cfg.test_chunk_interval]
+
+        self.use_vggt: bool = True
+        if self.use_vggt:
+            self.vggt_device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.vggt_dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+            # init vggt
+            self.vggt_model = VGGT()
+            local_model_path = "/work/courses/3dv/35/vggt/models--facebook--VGGT-1B/snapshots/860abec7937da0a4c03c41d3c269c366e82abdf9/model.safetensors"
+            state_dict = load_file(local_model_path)
+            self.vggt_model.load_state_dict(state_dict)
+            self.vggt_model.eval()
+            self.vggt_model = self.vggt_model.to(self.vggt_device)
 
     def shuffle(self, lst: list) -> list:
         indices = torch.randperm(len(lst))
@@ -114,13 +124,10 @@ class DatasetRE10k(IterableDataset):
         for chunk_path in self.chunks:
             # Load the chunk.
             chunk = torch.load(chunk_path)
+
             if self.cfg.overfit_to_scene is not None:
                 item = [x for x in chunk if x["key"] == self.cfg.overfit_to_scene]
                 assert len(item) == 1
-                chunk = item * len(chunk)
-            if self.debug:
-                item = [x for x in chunk if x["key"] == "5aca87f95a9412c6"]
-                assert len(item)==1
                 chunk = item * len(chunk)
 
             if self.stage in (("train", "val") if self.cfg.shuffle_val else ("train")):
@@ -143,9 +150,6 @@ class DatasetRE10k(IterableDataset):
                         extrinsics,
                         intrinsics,
                     )
-                    if self.debug:
-                        print(context_indices)
-                        context_indices = torch.tensor([58,70])
                 except ValueError:
                     # Skip because the example doesn't have enough frames.
                     continue
@@ -158,7 +162,20 @@ class DatasetRE10k(IterableDataset):
                 context_images = [
                     example["images"][index.item()] for index in context_indices
                 ]
+                if self.use_vggt:
+                    center_cropped_context_images_vggt, h_cropped, w_cropped = self.vggt_convert_images(context_images)
                 context_images = self.convert_images(context_images)
+
+
+                if self.use_vggt:
+                    extrinsics_vggt, intrinsics_vggt = self.estimate_camera_vggt(center_cropped_context_images_vggt, h_cropped, w_cropped)
+                    extrinsics_vggt.to(extrinsics.device)
+                    intrinsics_vggt.to(intrinsics.device)
+
+                print(f"H={h_cropped},W={w_cropped}")
+                
+                
+                
                 target_images = [
                     example["images"][index.item()] for index in target_indices
                 ]
@@ -180,130 +197,18 @@ class DatasetRE10k(IterableDataset):
                     continue
 
                 nf_scale = 1.0
-                extrinsics_vggt_5a = torch.tensor([[[1.000000, -0.000056, -0.000059, -0.000007],
-[0.000056, 1.000000, -0.000027, -0.000018],
-[0.000059, 0.000027, 1.000000, 0.000016],
-[0.0, 0.0, 0.0, 1.0]],
-
-[[0.999871, 0.004153, 0.015515, -0.010875],
-[-0.004165, 0.999991, 0.000711, 0.003780],
-[-0.015511, -0.000776, 0.999879, -0.061710],
-[0.0, 0.0, 0.0, 1.0]]])
-                extrinsics_vggt_gt_translation = torch.tensor([[[1.000000, -0.000056, -0.000059, 0.1020],
-[0.000056, 1.000000, -0.000027, 0.0571],
-[0.000059, 0.000027, 1.000000, -1.2647],
-[0.0, 0.0, 0.0, 1.0]],
-
-[[0.999871, 0.004153, 0.015515, 0.0470],
-[-0.004165, 0.999991, 0.000711, 0.0706],
-[-0.015511, -0.000776, 0.999879,-1.4049],
-[0.0, 0.0, 0.0, 1.0]]])
-                extrinsics_vggt_65 = torch.tensor([[[1.000000, -0.000081, 0.000031, 0.000026],
-[0.000081, 1.000000, -0.000032, -0.000010],
-[-0.000031, 0.000032, 1.000000, -0.000030],
-[0.0000e+00, 0.0000e+00, 0.0000e+00, 1.0000e+00]],
-
-[[0.999993, -0.001011, -0.003500, -0.003342],
-[0.001006, 0.999998, -0.001546, 0.002190],
-[0.003502, 0.001542, 0.999993, -0.030831],
- [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]]])
-                extrinsics_umeyama_aligned = torch.tensor([[[ 1.0000e+00, -5.6000e-05, -5.9000e-05,  9.4164e-02],
-         [ 5.6000e-05,  1.0000e+00, -2.7000e-05,  6.0083e-02],
-         [ 5.9000e-05,  2.7000e-05,  1.0000e+00, -1.2571e+00],
-         [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]],
-
-        [[ 9.9987e-01,  4.1530e-03,  1.5515e-02,  5.6808e-02],
-         [-4.1650e-03,  9.9999e-01,  7.1100e-04,  6.6878e-02],
-         [-1.5511e-02, -7.7600e-04,  9.9988e-01, -1.4141e+00],
-         [ 0.0000e+00,  0.0000e+00,  0.0000e+00,  1.0000e+00]]])
-                extrinsics_umeyama_aligned = extrinsics_umeyama_aligned.inverse()
-                gt_rot_ume=torch.tensor([[[ 9.8662e-01, -1.2380e-02,  1.6258e-01, -9.4164e-02],
-         [ 1.1423e-02,  9.9991e-01,  6.8159e-03, -6.0083e-02],
-         [-1.6265e-01, -4.8675e-03,  9.8667e-01, 1.2571e+00],
-         [-2.7533e-09, -1.2589e-10,  1.6831e-08,  1.0000e+00]],
-
-        [[ 9.8940e-01, -1.6843e-02,  1.4423e-01, -5.6808e-02],
-         [ 1.6304e-02,  9.9985e-01,  4.9176e-03, -6.6878e-02],
-         [-1.4429e-01, -2.5140e-03,  9.8953e-01,  1.4141e+00],
-         [-2.2062e-09,  3.2296e-12, -6.8599e-09,  1.0000e+00]]])
-                gt_rot=torch.tensor([[[ 9.8662e-01, -1.2380e-02,  1.6258e-01,  0.000007],
-         [ 1.1423e-02,  9.9991e-01,  6.8159e-03, 0.000018],
-         [-1.6265e-01, -4.8675e-03,  9.8667e-01, -0.000016],
-         [-2.7533e-09, -1.2589e-10,  1.6831e-08,  1.0000e+00]],
-
-        [[ 9.8940e-01, -1.6843e-02,  1.4423e-01, 0.010875],
-         [ 1.6304e-02,  9.9985e-01,  4.9176e-03, -0.003780],
-         [-1.4429e-01, -2.5140e-03,  9.8953e-01,  0.061710],
-         [-2.2062e-09,  3.2296e-12, -6.8599e-09,  1.0000e+00]]])
-                # extrinsics_vggt=gt_rot_ume
-                extrinsics_vggt=extrinsics_vggt_5a
-                extrinsics_vggt=extrinsics_vggt.inverse()
-                # choise 1: direct scale translation
-                scale_factor = 50.
-                extrinsics_vggt[:,:3,3]*=scale_factor
-                # choise 2: umeyama_aligned
-                # extrinsics_vggt = extrinsics_umeyama_aligned
-                intrinsics_vggt = torch.tensor([[[0.66409, 0.000000, 0.5],
-[0.000000, 1.176456, 0.5],
-[0.000000, 0.000000, 1.000000]],
-[[0.626594, 0.000000, 0.5],
-[0.000000, 1.1058973, 0.5],
-[0.000000, 0.000000, 1.000000]]])
-                extrinsics_vggsfm_aligned = torch.tensor([[[ 0.985243668074267, -0.045489101247291074, -0.1650019884343139,  0.10122522816325084],
-    [ 0.04305390512425685,  0.9989050066465699,  -0.018307073768568546, 0.06973023819216038],
-    [ 0.1656540846858756,   0.010932948556085991, 0.9861233162555051, -1.261752829508251],
-    [ 0.0, 0.0, 0.0, 1.0]],
-    [[ 0.9882409631442587, -0.04058578814064203, -0.14741978349160156,  0.04918173611951505],
-    [ 0.038792520529507594, 0.999134389866521,  -0.015020364077555439, 0.07739309314550169],
-    [ 0.14790178874738297,  0.009124954085227295, 0.9889599567718942, -1.4072476016685367],
-    [ 0.0, 0.0, 0.0, 1.0]]])
-                extrinsics_vggt_aligned = torch.tensor([[[ 0.8878230635721694, -0.43185741203833417, -0.15896346579286688,  0.08259634989411138],
-     [ 0.4121766730678942,  0.8998685886012389,  -0.14264260733559453,  0.18309631661530598],
-     [ 0.2046474968525386,  0.06112036417076369,  0.9769256384779874,  -1.252372775114746],
-     [ 0.0, 0.0, 0.0, 1.0]],
-
-    [[ 0.8927452016380407, -0.4268330022460518, -0.14428996204128686,  0.03746922927063111],
-     [ 0.4084353269919033,  0.9018625100553798, -0.1407998459573982,   0.18868511489554554],
-     [ 0.19022772830812834,  0.0667652690418602,  0.9794671052324815,  -1.3961770830932392],
-     [ 0.0, 0.0, 0.0, 1.0]]])
-                
-                R_vggt = extrinsics_vggt_aligned[:, :3, :3]
-                t_vggt = extrinsics_vggt_aligned[:, :3, 3:4]
-                R_gt_c2w = extrinsics[context_indices][:, :3, :3]
-                R_gt = R_gt_c2w.transpose(-1, -2)
-                C_vggt = -torch.bmm(R_vggt.transpose(1, 2), t_vggt)
-                t_new = -torch.bmm(R_gt, C_vggt)
-                new_w2c = torch.cat([R_gt, t_new], dim=-1)
-                bottom_row = torch.tensor([0, 0, 0, 1], dtype=new_w2c.dtype, device=new_w2c.device).reshape(1, 1, 4)
-                bottom_row = bottom_row.repeat(new_w2c.shape[0], 1, 1)
-                extrinsics_vggt_aligned = torch.cat([new_w2c, bottom_row], dim=1)
-                extrinsics_vggt_aligned = extrinsics_vggt_aligned.inverse()
-                
-                R_vggsfm = extrinsics_vggsfm_aligned[:, :3, :3]
-                t_vggsfm = extrinsics_vggsfm_aligned[:, :3, 3:4]
-                C_vggsfm = -torch.bmm(R_vggsfm.transpose(1, 2), t_vggsfm)
-                t_new = -torch.bmm(R_gt, C_vggsfm)
-                new_w2c = torch.cat([R_gt, t_new], dim=-1)
-                bottom_row = torch.tensor([0, 0, 0, 1], dtype=new_w2c.dtype, device=new_w2c.device).reshape(1, 1, 4)
-                bottom_row = bottom_row.repeat(new_w2c.shape[0], 1, 1)
-                extrinsics_vggsfm_aligned = torch.cat([new_w2c, bottom_row], dim=1)
-                extrinsics_vggsfm_aligned = extrinsics_vggsfm_aligned.inverse()
-                
                 example = {
                     "context": {
-                        "extrinsics": extrinsics_vggt_aligned,
-                        "intrinsics": intrinsics[context_indices],
+                        "extrinsics": extrinsics[context_indices] if not use_vggt else extrinsics_vggt[context_indices],
+                        "intrinsics": intrinsics[context_indices] if not use_vggt else intrinsics_vggt[context_indices],
                         "image": context_images,
-                        "raw_image": context_images,
-                        "raw_extrinsics": extrinsics[context_indices],
-                        "raw_intrinsics": intrinsics[context_indices],
                         "near": self.get_bound("near", len(context_indices)) / nf_scale,
                         "far": self.get_bound("far", len(context_indices)) / nf_scale,
                         "index": context_indices,
                     },
                     "target": {
-                        "extrinsics": extrinsics[target_indices],
-                        "intrinsics": intrinsics[target_indices],
+                        "extrinsics": extrinsics[target_indices] if not use_vggt else extrinsics_vggt[context_indices],
+                        "intrinsics": intrinsics[target_indices] if not use_vggt else intrinsics_vggt[context_indices],
                         "image": target_images,
                         "near": self.get_bound("near", len(target_indices)) / nf_scale,
                         "far": self.get_bound("far", len(target_indices)) / nf_scale,
@@ -391,3 +296,71 @@ class DatasetRE10k(IterableDataset):
             if self.stage == "test" and self.cfg.test_len > 0
             else len(self.index.keys()) * self.cfg.train_times_per_scene
         )
+    
+    def vggt_convert_images(
+        self,
+        images: list[UInt8[Tensor, "..."]],
+        patch_size = 14
+    ):
+        torch_images = []
+        for image in images:
+            image = Image.open(BytesIO(image.numpy().tobytes()))
+            torch_images.append(self.to_tensor(image))
+        images_tensor = torch.stack(torch_images)
+        _, _, h, w = images_tensor.shape
+
+        # Image size must be even so that naive center-cropping does not cause misalignment.
+        assert h % 2 == 0 and w % 2 == 0
+
+        h_new = (h // patch_size) * patch_size
+        row = (h - h_new) // 2
+        w_new = (w // patch_size) * patch_size
+        col = (w - w_new) // 2
+
+        # Center-crop the image.
+        image = images_tensor[:, :, row: row + h_new, col: col + w_new]
+        h_cropped = image.shape[-2]
+        w_cropped = image.shape[-1]
+        return image, h_cropped, w_cropped
+    
+    def estimate_camera_vggt(self, images, H, W):
+        """
+        inputs:
+        images: tensor [N,3,H,W] patched with 14
+        
+        return:
+        tuple: (extrinsics, intrinsics)
+            - extrinsics (torch.Tensor): Camera extrinsic parameters with shape Sx3x4.
+              In OpenCV coordinate system (x-right, y-down, z-forward), representing camera from world
+              transformation. The format is [R|t] where R is a 3x3 rotation matrix and t is
+              a 3x1 translation vector.
+            - intrinsics (torch.Tensor or None): Camera intrinsic parameters with shape Sx3x3,
+              or None if build_intrinsics is False. Defined in pixels, with format:
+              [[fx, 0, cx],
+               [0, fy, cy],
+               [0,  0,  1]]
+              where fx, fy are focal lengths and (cx, cy) is the principal point,
+              assumed to be at the center of the image (W/2, H/2).
+              then normalized
+        """
+        with torch.no_grad():
+            with torch.cuda.amp.autocast(dtype=self.vggt_dtype):
+                # Predict attributes including cameras, depth maps, and point maps.
+                # predictions = model(images)
+                images = images[None].to(self.vggt_device)  # add batch dimension
+                aggregated_tokens_list, ps_idx = self.vggt_model.aggregator(images)
+            # Predict Cameras
+            pose_enc = model.camera_head(aggregated_tokens_list)[-1]
+            # Extrinsic and intrinsic matrices, following OpenCV convention (camera from world)
+            extrinsic, intrinsic = pose_encoding_to_extri_intri(pose_enc, images.shape[-2:])
+            extrinsic = extrinsic[0] # remove batch dim
+            intrinsic = intrinsic[0]
+            W=W.to(self.vggt_device)
+            H=H.to(self.vggt_device)
+            intrinsic_clone = intrinsic.clone()
+            intrinsic_clone[..., 0, :] /= W
+            intrinsic_clone[..., 1, :] /= H
+            
+            return extrinsic, intrinsic
+        
+        

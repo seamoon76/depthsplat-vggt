@@ -18,6 +18,9 @@ import time
 from tqdm import tqdm
 import torch.nn.functional as F
 import math
+from safetensors.torch import load_file
+from vggt.models.vggt import VGGT
+from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 
 from ..dataset.data_module import get_data_shim
 from ..dataset.types import BatchedExample
@@ -128,8 +131,10 @@ class ModelWrapper(LightningModule):
         encoder_visualizer: Optional[EncoderVisualizer],
         decoder: Decoder,
         losses: list[Loss],
+        vggt_model: VGGT,
         step_tracker: StepTracker | None,
         eval_data_cfg: Optional[DatasetCfg | None] = None,
+
     ) -> None:
         super().__init__()
         self.optimizer_cfg = optimizer_cfg
@@ -152,6 +157,11 @@ class ModelWrapper(LightningModule):
         if self.test_cfg.compute_scores:
             self.test_step_outputs = {}
             self.time_skip_steps_dict = {"encoder": 0, "decoder": 0}
+        self.use_vggt: bool = False
+        if self.use_vggt:
+            self.vggt_model = vggt_model
+            self.vggt_device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.vggt_dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
 
     def training_step(self, batch, batch_idx):
         batch: BatchedExample = self.data_shim(batch)
@@ -358,6 +368,77 @@ class ModelWrapper(LightningModule):
 
         return total_loss
 
+    def vggt_convert_images(
+        self,
+        images,
+        patch_size = 14
+    ):
+        images_tensor = images.clone()
+        _, _, _, h, w = images_tensor.shape
+
+        # Image size must be even so that naive center-cropping does not cause misalignment.
+        assert h % 2 == 0 and w % 2 == 0
+
+        h_new = (h // patch_size) * patch_size
+        row = (h - h_new) // 2
+        w_new = (w // patch_size) * patch_size
+        col = (w - w_new) // 2
+
+        # Center-crop the image.
+        image = images_tensor[:, :, :, row: row + h_new, col: col + w_new]
+        h_cropped = image.shape[-2]
+        w_cropped = image.shape[-1]
+        return image, h_cropped, w_cropped, h, w
+
+    def estimate_camera_vggt(self, images, H, W, raw_H, raw_W):
+        """
+        inputs:
+        images: tensor [B,V,3,H,W] patched with 14
+
+        return:
+        tuple: (extrinsics, intrinsics)
+            - extrinsics (torch.Tensor): Camera extrinsic parameters with shape Sx3x4.
+              In OpenCV coordinate system (x-right, y-down, z-forward), representing camera from world
+              transformation. The format is [R|t] where R is a 3x3 rotation matrix and t is
+              a 3x1 translation vector.
+            - intrinsics (torch.Tensor or None): Camera intrinsic parameters with shape Sx3x3,
+              or None if build_intrinsics is False. Defined in pixels, with format:
+              [[fx, 0, cx],
+               [0, fy, cy],
+               [0,  0,  1]]
+              where fx, fy are focal lengths and (cx, cy) is the principal point,
+              assumed to be at the center of the image (W/2, H/2).
+              then normalized
+        """
+        with torch.no_grad():
+            with torch.cuda.amp.autocast(dtype=self.vggt_dtype):
+                # Predict attributes including cameras, depth maps, and point maps.
+                # predictions = model(images)
+                aggregated_tokens_list, ps_idx = self.vggt_model.aggregator(images)
+            # Predict Cameras
+            pose_enc = self.vggt_model.camera_head(aggregated_tokens_list)[-1]
+            # Extrinsic and intrinsic matrices, following OpenCV convention (camera from world)
+            extrinsic, intrinsic = pose_encoding_to_extri_intri(pose_enc, images.shape[-2:])
+            intrinsic_clone = intrinsic.clone()
+            intrinsic_clone[..., 0, :] /= W
+            intrinsic_clone[..., 1, :] /= H
+            w_in = W
+            h_in = H
+            w_out = 256
+            h_out = 256
+            scale_factor = max(h_out / h_in, w_out / w_in)
+            h_scaled = round(h_in * scale_factor)
+            w_scaled = round(w_in * scale_factor)
+            # intrinsic_clone[..., 0, 0] *= h_scaled/256
+            # intrinsic_clone[..., 1, 1] *= w_scaled/256
+            intrinsic_clone[..., 0, 0] = intrinsic_clone[..., 1, 1]
+            # Convert the extrinsics to a 4x4 OpenCV-style C2W matrix.
+            b = extrinsic.shape[1]
+            w2c = repeat(torch.eye(4, dtype=torch.float32), "h w -> b h w", b=b).clone()
+            w2c[:, :3] = extrinsic[0]
+
+            return w2c.unsqueeze(0), intrinsic_clone
+
     def test_step(self, batch, batch_idx):
         batch: BatchedExample = self.data_shim(batch)
         b, v, _, h, w = batch["target"]["image"].shape
@@ -381,15 +462,18 @@ class ModelWrapper(LightningModule):
             visualization_dump = {}
         else:
             visualization_dump = None
+
+        # use vggt camera intrinsic and extrinsic
+        if self.use_vggt:
+            center_cropped_context_images_vggt, h_cropped, w_cropped, h_raw, w_raw = self.vggt_convert_images(batch["context"]["raw_image"]) # [V, 3, H=256, W=256]-->[V, 3, H=252, W=252]
+            extrinsics_vggt, intrinsics_vggt = self.estimate_camera_vggt(center_cropped_context_images_vggt, h_cropped,
+                                                                         w_cropped,h_raw,w_raw)
+            assert batch["context"]["extrinsics"].shape == extrinsics_vggt.shape
+            batch["context"]["extrinsics"] = extrinsics_vggt.to(batch["context"]["extrinsics"].device)
+            batch["context"]["intrinsics"] = intrinsics_vggt.to(batch["context"]["extrinsics"].device)
+
         # Render Gaussians.
         with self.benchmarker.time("encoder"):
-            print(batch["context"]["extrinsics"].shape)
-            #batch["context"]["far"]/=50.
-            #batch["context"]["near"]/=50.
-            #batch["context"]["extrinsics"][:,:,:3,3]/=50.
-            #batch["target"]["extrinsics"][:,:,:3,3]/=50.
-            #batch["target"]["far"]/=50.
-            #batch["target"]["near"]/=50.
             gaussians = self.encoder(
                 batch["context"],
                 self.global_step,
@@ -1132,3 +1216,4 @@ class ModelWrapper(LightningModule):
                 "frequency": 1,
             },
         }
+
