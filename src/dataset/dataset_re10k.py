@@ -68,7 +68,7 @@ class DatasetRE10k(IterableDataset):
         if cfg.far != -1:
             self.far = cfg.far
 
-        self.debug=True
+        self.debug=False
         # Collect chunks.
         self.chunks = []
         for i, root in enumerate(cfg.roots):
@@ -241,8 +241,8 @@ class DatasetRE10k(IterableDataset):
                 extrinsics_vggt=extrinsics_vggt_5a
                 extrinsics_vggt=extrinsics_vggt.inverse()
                 # choise 1: direct scale translation
-                # scale_factor = 50.
-                # extrinsics_vggt[:,:3,3]*=scale_factor
+                scale_factor = 50.
+                extrinsics_vggt[:,:3,3]*=scale_factor
                 # choise 2: umeyama_aligned
                 # extrinsics_vggt = extrinsics_umeyama_aligned
                 intrinsics_vggt = torch.tensor([[[0.66409, 0.000000, 0.5],
@@ -290,13 +290,13 @@ class DatasetRE10k(IterableDataset):
                 bottom_row = bottom_row.repeat(new_w2c.shape[0], 1, 1)
                 extrinsics_vggsfm_aligned = torch.cat([new_w2c, bottom_row], dim=1)
                 extrinsics_vggsfm_aligned = extrinsics_vggsfm_aligned.inverse()
-                #if self.stage=="train":
-                #    input_extrinsics=extrinsics_vggt_finetune[context_indices]
-                #else:
-                #    input_extrinsics=extrinsics[context_indices]
+                if self.stage=="train":
+                    input_extrinsics=extrinsics_vggt_finetune[context_indices]
+                else:
+                    input_extrinsics=extrinsics[context_indices]
                 example = {
                     "context": {
-                        "extrinsics": extrinsics_vggt,
+                        "extrinsics": input_extrinsics,
                         "intrinsics": intrinsics[context_indices],
                         "image": context_images,
                         "raw_image": context_images,
