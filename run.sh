@@ -1,17 +1,10 @@
 #!/bin/bash
-#SBATCH --time=03:10
+#SBATCH --time=20:00:10
 #SBATCH --account=3dv
 #SBATCH --gpus=1
 #SBATCH --output=depthsplat_log.out
 source /work/courses/3dv/35/envs/depthsplat/bin/activate
-module load cuda/12.4
+module load cuda/12.6
 cd /work/courses/3dv/35/depthsplat/
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
-dataset.test_chunk_interval=1 \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=2 \
-model.encoder.lowest_feature_resolution=4 \
-model.encoder.monodepth_vit_type=vitb \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-base-re10k-256x256-view2-fbe87117.pth \
-mode=test \
-dataset/view_sampler=evaluation
+export WANDB_API_KEY=2870043c3f7b4982303d8e488c953e41efb710c5
+CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k data_loader.train.batch_size=1 dataset.test_chunk_interval=10 trainer.max_steps=150000 model.encoder.upsample_factor=4 model.encoder.lowest_feature_resolution=4 checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-20f39ed8.pth output_dir=checkpoints/re10k-256x256-depthsplat-small

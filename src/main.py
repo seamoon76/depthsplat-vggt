@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import warnings
 import copy
-
+import pdb
 import hydra
 import torch
 import wandb
@@ -206,7 +206,6 @@ def train(cfg_dict: DictConfig):
         # load pretrained mvdepth
         if cfg.checkpointing.pretrained_mvdepth is not None:
             pretrained_model = torch.load(cfg.checkpointing.pretrained_mvdepth, map_location='cpu')['model']
-
             model_wrapper.encoder.depth_predictor.load_state_dict(pretrained_model, strict=False)
             print(
                 cyan(
@@ -219,8 +218,11 @@ def train(cfg_dict: DictConfig):
             pretrained_model = torch.load(cfg.checkpointing.pretrained_model, map_location='cpu')
             if 'state_dict' in pretrained_model:
                 pretrained_model = pretrained_model['state_dict']
-
             model_wrapper.load_state_dict(pretrained_model, strict=strict_load)
+            for name, param in model_wrapper.named_parameters():
+                if 'encoder.depth_predictor.backbone' in name or 'encoder.depth_predictor.pretrained' in name:
+                    param.requires_grad = False
+                    print(f"Froze: {name}") 
             print(
                 cyan(
                     f"Loaded pretrained weights: {cfg.checkpointing.pretrained_model}"
@@ -246,7 +248,11 @@ def train(cfg_dict: DictConfig):
             pretrained_model = torch.load(cfg.checkpointing.pretrained_model, map_location='cpu')
             if 'state_dict' in pretrained_model:
                 pretrained_model = pretrained_model['state_dict']
-
+            # pdb.set_trace()
+            # for name, param in pretraied_model.named_parameters():
+            #    if 'CNNEncoder' in name or 'DinoVisionTransformer' in name:
+            #        param.requires_grad = False
+            #        print(f"Froze: {name}")
             model_wrapper.load_state_dict(pretrained_model, strict=strict_load)
             print(
                 cyan(

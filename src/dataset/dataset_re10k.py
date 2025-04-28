@@ -113,7 +113,7 @@ class DatasetRE10k(IterableDataset):
 
         for chunk_path in self.chunks:
             # Load the chunk.
-            chunk = torch.load(chunk_path)
+            chunk = torch.load(chunk_path,map_location='cpu')
             if self.cfg.overfit_to_scene is not None:
                 item = [x for x in chunk if x["key"] == self.cfg.overfit_to_scene]
                 assert len(item) == 1
@@ -135,6 +135,8 @@ class DatasetRE10k(IterableDataset):
             for run_idx in range(int(times_per_scene * len(chunk))):
                 example = chunk[run_idx // times_per_scene]
                 extrinsics, intrinsics = self.convert_poses(example["cameras"])
+                if self.stage=="train":
+                    extrinsics_vggt_finetune, intrinsics_vggt_finetune = self.convert_poses(example["vggt_camera"])
                 scene = example["key"]
 
                 try:
@@ -239,8 +241,8 @@ class DatasetRE10k(IterableDataset):
                 extrinsics_vggt=extrinsics_vggt_5a
                 extrinsics_vggt=extrinsics_vggt.inverse()
                 # choise 1: direct scale translation
-                scale_factor = 50.
-                extrinsics_vggt[:,:3,3]*=scale_factor
+                # scale_factor = 50.
+                # extrinsics_vggt[:,:3,3]*=scale_factor
                 # choise 2: umeyama_aligned
                 # extrinsics_vggt = extrinsics_umeyama_aligned
                 intrinsics_vggt = torch.tensor([[[0.66409, 0.000000, 0.5],
@@ -288,10 +290,13 @@ class DatasetRE10k(IterableDataset):
                 bottom_row = bottom_row.repeat(new_w2c.shape[0], 1, 1)
                 extrinsics_vggsfm_aligned = torch.cat([new_w2c, bottom_row], dim=1)
                 extrinsics_vggsfm_aligned = extrinsics_vggsfm_aligned.inverse()
-                
+                #if self.stage=="train":
+                #    input_extrinsics=extrinsics_vggt_finetune[context_indices]
+                #else:
+                #    input_extrinsics=extrinsics[context_indices]
                 example = {
                     "context": {
-                        "extrinsics": extrinsics_vggt_aligned,
+                        "extrinsics": extrinsics_vggt,
                         "intrinsics": intrinsics[context_indices],
                         "image": context_images,
                         "raw_image": context_images,

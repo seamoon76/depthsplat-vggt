@@ -3,15 +3,15 @@
 
 # small model
 # train on 4x GPUs (>=80GB VRAM) for 150K steps, batch size 8 on each gpu 
-python -m src.main +experiment=re10k \
-data_loader.train.batch_size=8 \
-dataset.test_chunk_interval=10 \
-trainer.max_steps=150000 \
-model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_monodepth=pretrained/depth_anything_v2_vits.pth \
-checkpointing.pretrained_mvdepth=pretrained/gmflow-scale1-things-e9887eda.pth \
-output_dir=checkpoints/re10k-256x256-depthsplat-small
+# python -m src.main +experiment=re10k \
+# data_loader.train.batch_size=8 \
+# dataset.test_chunk_interval=10 \
+# trainer.max_steps=150000 \
+# model.encoder.upsample_factor=4 \
+# model.encoder.lowest_feature_resolution=4 \
+# checkpointing.pretrained_monodepth=pretrained/depth_anything_v2_vits.pth \
+# checkpointing.pretrained_mvdepth=pretrained/gmflow-scale1-things-e9887eda.pth \
+# output_dir=checkpoints/re10k-256x256-depthsplat-small
 
 
 # or
@@ -57,9 +57,9 @@ output_dir=checkpoints/re10k-256x256-depthsplat-small
 # base model
 # train on 4x GPUs (>=80GB VRAM) for 150K steps, batch size 8 on each gpu 
 python -m src.main +experiment=re10k \
-data_loader.train.batch_size=8 \
+data_loader.train.batch_size=4 \
 dataset.test_chunk_interval=10 \
-trainer.max_steps=150000 \
+trainer.max_steps=300000 \
 model.encoder.num_scales=2 \
 model.encoder.upsample_factor=2 \
 model.encoder.lowest_feature_resolution=4 \
@@ -71,15 +71,15 @@ output_dir=checkpoints/re10k-256x256-depthsplat-base
 
 # large model
 # train on 4x GPUs (>=80GB VRAM) for 150K steps, batch size 8 on each gpu 
-python -m src.main +experiment=re10k \
-data_loader.train.batch_size=8 \
-dataset.test_chunk_interval=10 \
-trainer.max_steps=150000 \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=2 \
-model.encoder.lowest_feature_resolution=4 \
-model.encoder.monodepth_vit_type=vitl \
-checkpointing.pretrained_monodepth=pretrained/depth_anything_v2_vitl.pth \
-checkpointing.pretrained_mvdepth=pretrained/gmflow-scale1-things-e9887eda.pth \
-output_dir=checkpoints/re10k-256x256-depthsplat-large
+# python -m src.main +experiment=re10k \
+# data_loader.train.batch_size=8 \
+# dataset.test_chunk_interval=10 \
+# trainer.max_steps=150000 \
+# model.encoder.num_scales=2 \
+# model.encoder.upsample_factor=2 \
+# model.encoder.lowest_feature_resolution=4 \
+# model.encoder.monodepth_vit_type=vitl \
+# checkpointing.pretrained_monodepth=pretrained/depth_anything_v2_vitl.pth \
+# checkpointing.pretrained_mvdepth=pretrained/gmflow-scale1-things-e9887eda.pth \
+# output_dir=checkpoints/re10k-256x256-depthsplat-large
 
