@@ -7,7 +7,7 @@ gaussians_per_pixel: 1
 
 gaussian_adapter:
   gaussian_scale_min: 1e-10
-  gaussian_scale_max: 3.
+  gaussian_scale_max: 0.3
   sh_degree: 2
 
 d_feature: 128
