@@ -180,7 +180,10 @@ class DatasetRE10k(IterableDataset):
                         f"{target_images.shape}."
                     )
                     continue
-
+                
+                camera_norm_matrix = extrinsics[context_indices[0]].unsqueeze(0).inverse()
+                extrinsics = torch.bmm(camera_norm_matrix.repeat(extrinsics.shape[0], 1, 1), extrinsics)
+                
                 nf_scale = 1.0
                 extrinsics_vggt_5a = torch.tensor([[[1.000000, -0.000056, -0.000059, -0.000007],
 [0.000056, 1.000000, -0.000027, -0.000018],
@@ -269,27 +272,85 @@ class DatasetRE10k(IterableDataset):
      [ 0.19022772830812834,  0.0667652690418602,  0.9794671052324815,  -1.3961770830932392],
      [ 0.0, 0.0, 0.0, 1.0]]])
                 
-                R_vggt = extrinsics_vggt_aligned[:, :3, :3]
-                t_vggt = extrinsics_vggt_aligned[:, :3, 3:4]
-                R_gt_c2w = extrinsics[context_indices][:, :3, :3]
-                R_gt = R_gt_c2w.transpose(-1, -2)
-                C_vggt = -torch.bmm(R_vggt.transpose(1, 2), t_vggt)
-                t_new = -torch.bmm(R_gt, C_vggt)
-                new_w2c = torch.cat([R_gt, t_new], dim=-1)
-                bottom_row = torch.tensor([0, 0, 0, 1], dtype=new_w2c.dtype, device=new_w2c.device).reshape(1, 1, 4)
-                bottom_row = bottom_row.repeat(new_w2c.shape[0], 1, 1)
-                extrinsics_vggt_aligned = torch.cat([new_w2c, bottom_row], dim=1)
-                extrinsics_vggt_aligned = extrinsics_vggt_aligned.inverse()
+    #             extrinsics_vggsfm_norm = torch.tensor([
+    # [[ 0.9982360783774592,  -0.05929450296637074, -0.0029822380123343275, -0.0010664131640255624],
+    #  [ 0.05928096121951252,  0.9982314589550724,  -0.00444094464256064,    0.0015391991996283663],
+    #  [ 0.003240287407285571, 0.004256321228324572, 0.9999856920312007,     0.0023695330712160856],
+    #  [ 0.0, 0.0, 0.0, 1.0]],
+
+    # [[ 0.9984021869073282,  -0.05451143095362205,  0.014885465194377405, -0.03079521723519597],
+    #  [ 0.05454545464451762,  0.9985095016335451,  -0.001889054036345525,  0.01289511456540876],
+    #  [-0.014760303394151355, 0.002697970147695946, 0.9998874208633663,   -0.1413001655517699],
+    #  [ 0.0, 0.0, 0.0, 1.0]]])
                 
-                R_vggsfm = extrinsics_vggsfm_aligned[:, :3, :3]
-                t_vggsfm = extrinsics_vggsfm_aligned[:, :3, 3:4]
-                C_vggsfm = -torch.bmm(R_vggsfm.transpose(1, 2), t_vggsfm)
-                t_new = -torch.bmm(R_gt, C_vggsfm)
-                new_w2c = torch.cat([R_gt, t_new], dim=-1)
-                bottom_row = torch.tensor([0, 0, 0, 1], dtype=new_w2c.dtype, device=new_w2c.device).reshape(1, 1, 4)
-                bottom_row = bottom_row.repeat(new_w2c.shape[0], 1, 1)
-                extrinsics_vggsfm_aligned = torch.cat([new_w2c, bottom_row], dim=1)
+                extrinsics_vggsfm_norm = torch.tensor([
+    [[ 0.9798601905135721,   0.19927744836356182, -0.01274776923284851,   -0.0009618806757808248],
+     [-0.19886322396920691,  0.9796232848122979,   0.028136062377958855,   0.002454982475347965],
+     [ 0.018094894287589855, -0.0250343449539088,  0.9995228143336446,     0.0022854315369160326],
+     [ 0.0, 0.0, 0.0, 1.0]],
+
+    [[ 0.9790808087908461,   0.20340361116816325,  0.005266955592503611,  -0.02486978859596383],
+     [-0.2034688352007551,   0.9785989819090871,   0.03073216081804645,    0.01445706027437607],
+     [ 0.0010967951088069763, -0.031160930189084078, 0.999513778529461,   -0.1421347680184406],
+     [ 0.0, 0.0, 0.0, 1.0]]
+])
+#                 extrinsics_vggt_norm = torch.tensor([
+#     [[ 0.895791175959932, -0.444207597848377, -0.01542008709757408, -0.0031738943947491184],
+#      [ 0.4423017345826051, 0.8943009272973241, -0.06778662862515684, 0.0015856712370884453],
+#      [ 0.04390153365818695, 0.05390233249981658, 0.997580670368837, 0.0017469006093189289],
+#      [ 0.0, 0.0, 0.0, 1.0]],
+
+#     [[ 0.898330962623583, -0.4393193255172301, -0.00010871463892108031, -0.029468125784154534],
+#      [ 0.4383385088124405, 0.8963418363414738, -0.06656323396651295, 0.009009377174927767],
+#      [ 0.02933996052950176, 0.05974816023176561, 0.997782202720136, -0.1406235645228287],
+#      [ 0.0, 0.0, 0.0, 1.0]]
+# ])
+                extrinsics_vggt_norm = torch.tensor([
+    [[ 0.8910361012094945, -0.4110385685910187, 0.19261869450297384, 0.0026600257508241866],
+     [ 0.4311957809742515, 0.899037351319993, -0.07617111920890368, -0.0009847216079793355],
+     [-0.14186213311306486, 0.1509275854911157, 0.9783128329560198, 0.0024001866634818904],
+     [ 0.0, 0.0, 0.0, 1.0]],
+
+    [[ 0.8916727697373612, -0.40304077145370276, 0.20610145136535757, -0.06434147098329834],
+     [ 0.4261450762560264, 0.9009470501692893, -0.08182167667556917, 0.014678022142410402],
+     [-0.15270902295427136, 0.1607872797744276, 0.9751037918965815, -0.13143028861027364],
+     [ 0.0, 0.0, 0.0, 1.0]]
+])
+
+                
+                # R_vggt = extrinsics_vggt_aligned[:, :3, :3]
+                # t_vggt = extrinsics_vggt_aligned[:, :3, 3:4]
+                # R_gt_c2w = extrinsics[context_indices][:, :3, :3]
+                # R_gt = R_gt_c2w.transpose(-1, -2)
+                # C_vggt = -torch.bmm(R_vggt.transpose(1, 2), t_vggt)
+                # t_new = -torch.bmm(R_gt, C_vggt)
+                # new_w2c = torch.cat([R_gt, t_new], dim=-1)
+                # bottom_row = torch.tensor([0, 0, 0, 1], dtype=new_w2c.dtype, device=new_w2c.device).reshape(1, 1, 4)
+                # bottom_row = bottom_row.repeat(new_w2c.shape[0], 1, 1)
+                # extrinsics_vggt_aligned = torch.cat([new_w2c, bottom_row], dim=1)
+                camera_norm_matrix = extrinsics_vggt_aligned[0].unsqueeze(0).inverse()
+                extrinsics_vggt_aligned = torch.bmm(camera_norm_matrix.repeat(extrinsics_vggt_aligned.shape[0], 1, 1), extrinsics_vggt_aligned)
+                extrinsics_vggt_aligned = extrinsics_vggt_aligned.inverse()
+                # camera_norm_matrix = extrinsics_vggt_norm[0].unsqueeze(0).inverse()
+                # extrinsics_vggt_norm = torch.bmm(camera_norm_matrix.repeat(extrinsics_vggt_norm.shape[0], 1, 1), extrinsics_vggt_norm)
+                extrinsics_vggt_norm = extrinsics_vggt_norm.inverse()
+                
+                # R_vggsfm = extrinsics_vggsfm_aligned[:, :3, :3]
+                # t_vggsfm = extrinsics_vggsfm_aligned[:, :3, 3:4]
+                # C_vggsfm = -torch.bmm(R_vggsfm.transpose(1, 2), t_vggsfm)
+                # t_new = -torch.bmm(R_gt, C_vggsfm)
+                # new_w2c = torch.cat([R_gt, t_new], dim=-1)
+                # bottom_row = torch.tensor([0, 0, 0, 1], dtype=new_w2c.dtype, device=new_w2c.device).reshape(1, 1, 4)
+                # bottom_row = bottom_row.repeat(new_w2c.shape[0], 1, 1)
+                # extrinsics_vggsfm_aligned = torch.cat([new_w2c, bottom_row], dim=1)
+                # extrinsics_vggsfm_aligned = extrinsics_vggsfm_aligned.inverse()
+                camera_norm_matrix = extrinsics_vggsfm_aligned[0].unsqueeze(0).inverse()
+                extrinsics_vggsfm_aligned = torch.bmm(camera_norm_matrix.repeat(extrinsics_vggsfm_aligned.shape[0], 1, 1), extrinsics_vggsfm_aligned)
                 extrinsics_vggsfm_aligned = extrinsics_vggsfm_aligned.inverse()
+                # camera_norm_matrix = extrinsics_vggsfm_norm[0].unsqueeze(0).inverse()
+                # extrinsics_vggsfm_norm = torch.bmm(camera_norm_matrix.repeat(extrinsics_vggsfm_norm.shape[0], 1, 1), extrinsics_vggsfm_norm)
+                extrinsics_vggsfm_norm = extrinsics_vggsfm_norm.inverse()
+                
                 if self.stage=="train":
                     input_extrinsics=extrinsics_vggt_finetune[context_indices]
                 else:

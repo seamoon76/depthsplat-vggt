@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --time=36:00:10
+#SBATCH --time=20:00:10
 #SBATCH --account=3dv
 #SBATCH --gpus=1
 #SBATCH --output=depthsplat_log.out
