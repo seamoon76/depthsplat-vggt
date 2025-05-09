@@ -132,6 +132,8 @@ def train(cfg_dict: DictConfig):
 
     # This allows the current step to be shared with the data loader processes.
     step_tracker = StepTracker()
+    
+    precision = "bf16" if torch.cuda.get_device_capability()[0] >= 8 else 16
 
     trainer = Trainer(
         max_epochs=-1,
@@ -147,19 +149,20 @@ def train(cfg_dict: DictConfig):
         num_sanity_val_steps=cfg.trainer.num_sanity_val_steps,
         num_nodes=cfg.trainer.num_nodes,
         plugins=LightningEnvironment() if cfg.use_plugins else None,
+        # precision=precision,
     )
     torch.manual_seed(cfg_dict.seed + trainer.global_rank)
 
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)
-    vggt_device = "cuda" if torch.cuda.is_available() else "cpu"
-    vggt_dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+    # vggt_device = "cuda" if torch.cuda.is_available() else "cpu"
+    # vggt_dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
     # init vggt
-    vggt_model = VGGT()
-    local_model_path = "/work/courses/3dv/35/vggt/models--facebook--VGGT-1B/snapshots/860abec7937da0a4c03c41d3c269c366e82abdf9/model.safetensors"
-    vggt_state_dict = load_file(local_model_path)
-    vggt_model.load_state_dict(vggt_state_dict)
-    vggt_model.eval()
-    vggt_model = vggt_model.to(vggt_device)
+    # vggt_model = VGGT()
+    # local_model_path = "/work/courses/3dv/35/vggt/models--facebook--VGGT-1B/snapshots/860abec7937da0a4c03c41d3c269c366e82abdf9/model.safetensors"
+    # vggt_state_dict = load_file(local_model_path)
+    # vggt_model.load_state_dict(vggt_state_dict)
+    # vggt_model.eval()
+    # vggt_model = vggt_model.to(vggt_device)
     model_wrapper = ModelWrapper(
         cfg.optimizer,
         cfg.test,

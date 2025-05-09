@@ -135,8 +135,8 @@ class DatasetRE10k(IterableDataset):
             for run_idx in range(int(times_per_scene * len(chunk))):
                 example = chunk[run_idx // times_per_scene]
                 extrinsics, intrinsics = self.convert_poses(example["cameras"])
-                if self.stage=="train":
-                    extrinsics_vggt_finetune, intrinsics_vggt_finetune = self.convert_poses(example["vggt_camera"])
+                extrinsics_vggt_finetune, intrinsics_vggt_finetune = self.convert_poses(example["vggt_camera"])
+                far_near_vggt_finetune = example["depth"]
                 scene = example["key"]
 
                 try:
@@ -165,7 +165,18 @@ class DatasetRE10k(IterableDataset):
                     example["images"][index.item()] for index in target_indices
                 ]
                 target_images = self.convert_images(target_images)
+                # load the far and near
+                if "depth" in example.keys():
+                    context_fars = torch.tensor([example["depth"][index.item()][0] for index in context_indices])
+                    context_nears = torch.tensor([example["depth"][index.item()][1] for index in context_indices])
+                    target_fars = torch.tensor([example["depth"][index.item()][0] for index in target_indices])
+                    target_nears = torch.tensor([example["depth"][index.item()][1] for index in target_indices])
 
+                else:
+                    context_fars = self.get_bound("far",len(context_indices))
+                    context_nears = self.get_bound("near",len(context_indices))
+                    target_fars = self.get_bound("far",len(target_indices))
+                    target_nears = self.get_bound("near",len(target_indices))
                 # Skip the example if the images don't have the right shape.
                 if self.cfg.highres:
                     expected_shape = (3, 720, 1280)
@@ -183,7 +194,8 @@ class DatasetRE10k(IterableDataset):
                 
                 camera_norm_matrix = extrinsics[context_indices[0]].unsqueeze(0).inverse()
                 extrinsics = torch.bmm(camera_norm_matrix.repeat(extrinsics.shape[0], 1, 1), extrinsics)
-                
+                camera_norm_matrix_vggt_finetune = extrinsics_vggt_finetune[context_indices[0]].unsqueeze(0).inverse()
+                extrinsics_vggt_finetune = torch.bmm(camera_norm_matrix_vggt_finetune.repeat(extrinsics_vggt_finetune.shape[0], 1, 1), extrinsics_vggt_finetune)
                 nf_scale = 1.0
                 extrinsics_vggt_5a = torch.tensor([[[1.000000, -0.000056, -0.000059, -0.000007],
 [0.000056, 1.000000, -0.000027, -0.000018],
@@ -351,28 +363,28 @@ class DatasetRE10k(IterableDataset):
                 # extrinsics_vggsfm_norm = torch.bmm(camera_norm_matrix.repeat(extrinsics_vggsfm_norm.shape[0], 1, 1), extrinsics_vggsfm_norm)
                 extrinsics_vggsfm_norm = extrinsics_vggsfm_norm.inverse()
                 
-                if self.stage=="train":
+                if self.stage=="train" or self.stage=="test":
                     input_extrinsics=extrinsics_vggt_finetune[context_indices]
                 else:
                     input_extrinsics=extrinsics[context_indices]
                 example = {
                     "context": {
-                        "extrinsics": input_extrinsics,
+                        "extrinsics": extrinsics_vggt_finetune[context_indices],
                         "intrinsics": intrinsics[context_indices],
                         "image": context_images,
                         "raw_image": context_images,
                         "raw_extrinsics": extrinsics[context_indices],
                         "raw_intrinsics": intrinsics[context_indices],
-                        "near": self.get_bound("near", len(context_indices)) / nf_scale,
-                        "far": self.get_bound("far", len(context_indices)) / nf_scale,
+                        "near": context_nears,
+                        "far": context_fars,
                         "index": context_indices,
                     },
                     "target": {
-                        "extrinsics": extrinsics[target_indices],
+                        "extrinsics": extrinsics_vggt_finetune[target_indices],
                         "intrinsics": intrinsics[target_indices],
                         "image": target_images,
-                        "near": self.get_bound("near", len(target_indices)) / nf_scale,
-                        "far": self.get_bound("far", len(target_indices)) / nf_scale,
+                        "near": target_nears,
+                        "far": target_fars,
                         "index": target_indices,
                     },
                     "scene": scene,

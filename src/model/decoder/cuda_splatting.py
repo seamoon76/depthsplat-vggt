@@ -9,9 +9,8 @@ from diff_gaussian_rasterization import (
 from einops import einsum, rearrange, repeat
 from jaxtyping import Float
 from torch import Tensor
-
+from torch import is_autocast_enabled
 from ...geometry.projection import get_fov, homogenize_points
-
 
 def get_projection_matrix(
     near: Float[Tensor, " batch"],

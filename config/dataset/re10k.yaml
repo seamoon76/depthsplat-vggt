@@ -2,7 +2,7 @@ defaults:
   - view_sampler: bounded
 
 name: re10k
-roots: [../datasets/re10k]
+roots: [../datasets/vggt_re10k]
 make_baseline_1: false
 augment: true
 
