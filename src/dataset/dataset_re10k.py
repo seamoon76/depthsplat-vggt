@@ -110,7 +110,7 @@ class DatasetRE10k(IterableDataset):
                 for chunk_index, chunk in enumerate(self.chunks)
                 if chunk_index % worker_info.num_workers == worker_info.id
             ]
-
+        print(len(self.chunks))
         for chunk_path in self.chunks:
             # Load the chunk.
             chunk = torch.load(chunk_path,map_location='cpu')

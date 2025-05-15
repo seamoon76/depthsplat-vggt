@@ -18,7 +18,7 @@ near: -1.
 far: -1.
 baseline_scale_bounds: true
 shuffle_val: true
-test_len: 10
+test_len: -1
 test_chunk_interval: 1
 
 use_index_to_load_chunk: false
