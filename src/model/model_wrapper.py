@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Protocol, runtime_checkable
-import pdb
 import moviepy.editor as mpy
 import torch
 import wandb
@@ -383,13 +382,6 @@ class ModelWrapper(LightningModule):
             visualization_dump = None
         # Render Gaussians.
         with self.benchmarker.time("encoder"):
-            print(batch["context"]["extrinsics"].shape)
-            #batch["context"]["far"]/=50.
-            #batch["context"]["near"]/=50.
-            #batch["context"]["extrinsics"][:,:,:3,3]/=50.
-            #batch["target"]["extrinsics"][:,:,:3,3]/=50.
-            #batch["target"]["far"]/=50.
-            #batch["target"]["near"]/=50.
             gaussians = self.encoder(
                 batch["context"],
                 self.global_step,
