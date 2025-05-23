@@ -130,7 +130,6 @@ class DatasetRE10k(IterableDataset):
                 extrinsics_vggt_finetune, intrinsics_vggt_finetune = self.convert_poses(example["vggt_camera"])
                 far_near_vggt_finetune = example["depth"]
                 scene = example["key"]
-
                 try:
                     context_indices, target_indices = self.view_sampler.sample(
                         scene,

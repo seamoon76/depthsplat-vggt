@@ -17,7 +17,7 @@ skip_bad_shape: true
 near: -1.
 far: -1.
 baseline_scale_bounds: true
-shuffle_val: true
+shuffle_val: True
 test_len: -1
 test_chunk_interval: 1
 
