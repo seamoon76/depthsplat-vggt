@@ -47,7 +47,11 @@ from src.visualization.vis_depth import viz_depth_tensor
 from PIL import Image
 from ..misc.stablize_camera import render_stabilization_path
 from .ply_export import save_gaussian_ply
-
+import sys
+sys.path.append('/work/courses/3dv/35/RoMa')
+from romatch import roma_indoor
+from torchvision.transforms.functional import to_pil_image
+import pdb
 
 @dataclass
 class OptimizerCfg:
@@ -147,7 +151,9 @@ class ModelWrapper(LightningModule):
         # This is used for testing.
         self.benchmarker = Benchmarker()
         self.eval_cnt = 0
-
+        self.supervise_correspondence_loss = True
+        if self.supervise_correspondence_loss:
+            self.roma_model = roma_indoor(device='cuda')
         if self.test_cfg.compute_scores:
             self.test_step_outputs = {}
             self.time_skip_steps_dict = {"encoder": 0, "decoder": 0}
@@ -164,8 +170,36 @@ class ModelWrapper(LightningModule):
         if isinstance(gaussians, dict):
             pred_depths = gaussians["depths"]
             gaussians = gaussians["gaussians"]
-
         supervise_intermediate_depth = False
+        
+        corres_map = None
+        if self.supervise_correspondence_loss:
+            # compute corr for input images
+            context_images = batch["context"]["image"]
+            if len(context_images.shape)==5:
+                context_images=context_images.squeeze(0)
+            # print("context image shape{}".format(context_images.shape))  # should be (2, 3, 360, 640) or (3, 3, 360, 640)
+            img_tensor_0 = context_images[0]
+            im_A = to_pil_image(img_tensor_0)
+            img_tensor_1 = context_images[1]
+            im_B = to_pil_image(img_tensor_1)
+            warp, certainty = self.roma_model.match(im_A, im_B, device=context_images.device)
+            matches, certainty = self.roma_model.sample(warp, certainty)
+            H, W = context_images.shape[-2], context_images.shape[-1]
+            kptsA, kptsB = self.roma_model.to_pixel_coordinates(matches, H, W, H, W)
+            corres_map = torch.full((3, H, W), -1.0, dtype=torch.float32, device=kptsA.device)
+            for i in range(kptsA.shape[0]):
+                xA, yA = kptsA[i]
+                xB, yB = kptsB[i]
+                
+                xA = int(round(xA.item()))
+                yA = int(round(yA.item()))
+    
+                if 0 <= xA < W and 0 <= yA < H:
+                    corres_map[0, yA, xA] = xB  #x
+                    corres_map[1, yA, xA] = yB  # y
+                    corres_map[2, yA, xA] = 1.0  #valid mask
+            # print("corres_map shape:{}".format(corres_map.shape)) # 3,H,W
 
         if gaussians.means.size(0) != batch["target"]["extrinsics"].size(0):
             supervise_intermediate_depth = True
@@ -222,6 +256,25 @@ class ModelWrapper(LightningModule):
                 (h, w),
                 depth_mode=self.train_cfg.depth_mode,
             )
+            # output depth for context views, for corrs_loss
+            if self.supervise_correspondence_loss:
+                output_context = self.decoder.forward(
+                    gaussians,
+                    batch["context"]["extrinsics"],
+                    batch["context"]["intrinsics"],
+                    batch["context"]["near"],
+                    batch["context"]["far"],
+                    (h, w),
+                    depth_mode=self.train_cfg.depth_mode,
+                    return_depth=True
+                )
+                context_depth=output_context.context_depth.unsqueeze(0) # b,v,h,w
+                print("pred detph max{}".format(context_depth.max()))
+                print("vggt depth max{}".format(batch["context"]["far"]))
+                print("context depth shape:{}".format(context_depth.shape))
+                pdb.set_trace()
+            else:
+                output_context = None
 
         target_gt = batch["target"]["image"]
 

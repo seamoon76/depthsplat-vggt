@@ -21,3 +21,9 @@ tqdm==4.66.4
 wandb==0.17.7
 xformers==0.0.27.post2
 git+https://github.com/dcharatan/diff-gaussian-rasterization-modified
+kornia
+albumentations
+loguru
+h5py
+timm
+poselib

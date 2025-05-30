@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Generic, Literal, TypeVar
+from typing import Generic, Literal, TypeVar, Any
 
 from jaxtyping import Float
 from torch import Tensor, nn
@@ -20,7 +20,7 @@ DepthRenderingMode = Literal[
 class DecoderOutput:
     color: Float[Tensor, "batch view 3 height width"]
     depth: Float[Tensor, "batch view height width"] | None
-
+    context_depth: Any
 
 T = TypeVar("T")
 

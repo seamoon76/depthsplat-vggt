@@ -41,6 +41,7 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
         far: Float[Tensor, "batch view"],
         image_shape: tuple[int, int],
         depth_mode: DepthRenderingMode | None = None,
+        return_depth = False
     ) -> DecoderOutput:
         b, v, _, _ = extrinsics.shape
         color = render_cuda(
@@ -54,7 +55,10 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
             repeat(gaussians.covariances, "b g i j -> (b v) g i j", v=v),
             repeat(gaussians.harmonics, "b g c d_sh -> (b v) g c d_sh", v=v),
             repeat(gaussians.opacities, "b g -> (b v) g", v=v),
+            return_depth=return_depth
         )
+        if return_depth:
+            color, context_depth = color
         color = rearrange(color, "(b v) c h w -> b v c h w", b=b, v=v)
 
         return DecoderOutput(
@@ -64,6 +68,7 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
             else self.render_depth(
                 gaussians, extrinsics, intrinsics, near, far, image_shape, depth_mode
             ),
+            context_depth = context_depth if return_depth else None
         )
 
     def render_depth(

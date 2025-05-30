@@ -9,7 +9,7 @@ wandb:
   project: depthsplat
   entity: seamoon2020-eth-z-rich
   name: placeholder
-  mode: online
+  mode: disabled
   id: null
 
 mode: train

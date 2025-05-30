@@ -6,6 +6,8 @@ from diff_gaussian_rasterization import (
     GaussianRasterizationSettings,
     GaussianRasterizer,
 )
+from diff_gaussian_rasterization_depth import GaussianRasterizationSettings as DepthGaussianRasterizationSettings
+from diff_gaussian_rasterization_depth import GaussianRasterizer as DepthGaussianRasterizer
 from einops import einsum, rearrange, repeat
 from jaxtyping import Float
 from torch import Tensor
@@ -55,7 +57,8 @@ def render_cuda(
     gaussian_opacities: Float[Tensor, "batch gaussian"],
     scale_invariant: bool = True,
     use_sh: bool = True,
-) -> Float[Tensor, "batch 3 height width"]:
+    return_depth = False,
+):
     assert use_sh or gaussian_sh_coefficients.shape[-1] == 1
 
     # Make sure everything is in a range where numerical issues don't appear.
@@ -86,6 +89,7 @@ def render_cuda(
 
     all_images = []
     all_radii = []
+    all_depth = []
     for i in range(b):
         # Set up a tensor for the gradients of the screen-space means.
         mean_gradients = torch.zeros_like(gaussian_means[i], requires_grad=True)
@@ -93,37 +97,67 @@ def render_cuda(
             mean_gradients.retain_grad()
         except Exception:
             pass
-
-        settings = GaussianRasterizationSettings(
-            image_height=h,
-            image_width=w,
-            tanfovx=tan_fov_x[i].item(),
-            tanfovy=tan_fov_y[i].item(),
-            bg=background_color[i],
-            scale_modifier=1.0,
-            viewmatrix=view_matrix[i],
-            projmatrix=full_projection[i],
-            sh_degree=degree,
-            campos=extrinsics[i, :3, 3],
-            prefiltered=False,  # This matches the original usage.
-            debug=False,
-        )
-        rasterizer = GaussianRasterizer(settings)
+        if return_depth:
+            settings = DepthGaussianRasterizationSettings(
+                image_height=h,
+                image_width=w,
+                tanfovx=tan_fov_x[i].item(),
+                tanfovy=tan_fov_y[i].item(),
+                bg=background_color[i],
+                scale_modifier=1.0,
+                viewmatrix=view_matrix[i],
+                projmatrix=full_projection[i],
+                sh_degree=degree,
+                campos=extrinsics[i, :3, 3],
+                prefiltered=False,  # This matches the original usage.
+                debug=False,
+            )
+            rasterizer = DepthGaussianRasterizer(settings)
+        else:
+            settings = GaussianRasterizationSettings(
+                image_height=h,
+                image_width=w,
+                tanfovx=tan_fov_x[i].item(),
+                tanfovy=tan_fov_y[i].item(),
+                bg=background_color[i],
+                scale_modifier=1.0,
+                viewmatrix=view_matrix[i],
+                projmatrix=full_projection[i],
+                sh_degree=degree,
+                campos=extrinsics[i, :3, 3],
+                prefiltered=False,  # This matches the original usage.
+                debug=False,
+            )
+            rasterizer = GaussianRasterizer(settings)
 
         row, col = torch.triu_indices(3, 3)
-
-        image, radii = rasterizer(
-            means3D=gaussian_means[i],
-            means2D=mean_gradients,
-            shs=shs[i] if use_sh else None,
-            colors_precomp=None if use_sh else shs[i, :, 0, :],
-            opacities=gaussian_opacities[i, ..., None],
-            cov3D_precomp=gaussian_covariances[i, :, row, col],
-        )
-        all_images.append(image)
-        all_radii.append(radii)
-    return torch.stack(all_images)
-
+        if return_depth:
+            image, radii, depth, weights = rasterizer(
+                means3D=gaussian_means[i],
+                means2D=mean_gradients,
+                shs=shs[i] if use_sh else None,
+                colors_precomp=None if use_sh else shs[i, :, 0, :],
+                opacities=gaussian_opacities[i, ..., None],
+                cov3D_precomp=gaussian_covariances[i, :, row, col],
+            )
+            all_images.append(image)
+            all_radii.append(radii)
+            all_depth.append(depth)
+        else:
+            image, radii = rasterizer(
+                means3D=gaussian_means[i],
+                means2D=mean_gradients,
+                shs=shs[i] if use_sh else None,
+                colors_precomp=None if use_sh else shs[i, :, 0, :],
+                opacities=gaussian_opacities[i, ..., None],
+                cov3D_precomp=gaussian_covariances[i, :, row, col],
+            )
+            all_images.append(image)
+            all_radii.append(radii)
+    if return_depth:
+        return torch.stack(all_images), torch.stack(all_depth)
+    else:
+        return torch.stack(all_images)
 
 def render_cuda_orthographic(
     extrinsics: Float[Tensor, "batch 4 4"],
