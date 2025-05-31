@@ -7,7 +7,7 @@ from diff_gaussian_rasterization import (
     GaussianRasterizer,
 )
 from diff_gaussian_rasterization_depth import GaussianRasterizationSettings as DepthGaussianRasterizationSettings
-from diff_gaussian_rasterization_depth import GaussianRasterizer as DepthGaussianRasterizer
+from diff_gaussian_rasterization import GaussianRasterizer as DepthGaussianRasterizer
 from einops import einsum, rearrange, repeat
 from jaxtyping import Float
 from torch import Tensor
