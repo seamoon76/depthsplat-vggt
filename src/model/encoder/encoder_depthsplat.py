@@ -218,6 +218,7 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
                                           0] if self.cfg.num_scales == 1 else results_dict["features_mv"][::-1]
                                           )
 
+        camtoworlds = None
         if self.cfg.pose_opt:
             # https://github.com/nerfstudio-project/gsplat/blob/main/examples/utils.py
             pose_deltas = self.pose_adjuster(features)  # [B, 9]
@@ -231,6 +232,7 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
             transform[..., :3, :3] = rot
             transform[..., :3, 3] = dx
             camtoworlds = torch.matmul(camtoworlds, transform)
+            context["extrinsics"] = camtoworlds
         # match prob from softmax
         # [BV, D, H, W] in feature resolution
         match_prob = results_dict['match_probs'][-1]
@@ -386,13 +388,13 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
                 depths, "b v (h w) srf s -> b v h w srf s", h=h, w=w
             ).squeeze(-1).squeeze(-1)
             # print(depths.shape)  # [B, V, H, W]
-
             return {
                 "gaussians": gaussians,
-                "depths": depths
+                "depths": depths,
+                "camtoworlds": camtoworlds,
             }
 
-        return gaussians
+        return gaussians, camtoworlds
 
     def get_data_shim(self) -> DataShim:
         def data_shim(batch: BatchedExample) -> BatchedExample:
