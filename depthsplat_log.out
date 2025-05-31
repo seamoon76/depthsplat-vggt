@@ -7,16 +7,17 @@ GPU available: True (cuda), used: True
 TPU available: False, using: 0 TPU cores
 HPU available: False, using: 0 HPUs
 Using cache found in /home/maqima/.cache/torch/hub/facebookresearch_dinov2_main
-[2025-05-31 19:04:46,080][dinov2][INFO] - using MLP layer as FFN
+[2025-05-31 20:07:04,104][dinov2][INFO] - using MLP layer as FFN
+Using cache found in /home/maqima/.cache/torch/hub/verlab_accelerated_features_main
 wandb: Currently logged in as: seamoon2020 (seamoon2020-eth-z-rich). Use `wandb login --relogin` to force relogin
 wandb: wandb version 0.19.11 is available!  To upgrade, please run:
 wandb:  $ pip install wandb --upgrade
 wandb: Tracking run with wandb version 0.17.7
-wandb: Run data is saved locally in checkpoints/re10k-256x256-depthsplat-small/wandb/run-20250531_190504-bcc7uqzg
+wandb: Run data is saved locally in checkpoints/re10k-256x256-depthsplat-small/wandb/run-20250531_200712-zikte9en
 wandb: Run `wandb offline` to turn off syncing.
 wandb: Syncing run re10k-256x256-depthsplat-small
 wandb: ⭐️ View project at https://wandb.ai/seamoon2020-eth-z-rich/depthsplat
-wandb: 🚀 View run at https://wandb.ai/seamoon2020-eth-z-rich/depthsplat/runs/bcc7uqzg
+wandb: 🚀 View run at https://wandb.ai/seamoon2020-eth-z-rich/depthsplat/runs/zikte9en
 LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
 
   | Name       | Type                 | Params | Mode 
@@ -24,17 +25,16 @@ LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
 0 | encoder    | EncoderDepthSplat    | 38.4 M | train
 1 | decoder    | DecoderSplattingCUDA | 0      | train
 2 | losses     | ModuleList           | 0      | train
-3 | roma_model | RegressionMatcher    | 111 M  | train
+3 | roma_model | TinyRoMa             | 2.8 M  | train
 ------------------------------------------------------------
-126 M     Trainable params
+18.1 M    Trainable params
 23.1 M    Non-trainable params
-149 M     Total params
-598.577   Total estimated model params size (MB)
-1139      Modules in train mode
-59        Modules in eval mode
+41.2 M    Total params
+164.794   Total estimated model params size (MB)
+786       Modules in train mode
+161       Modules in eval mode
 Setting up [LPIPS] perceptual loss: trunk [vgg], v[0.1], spatial [off]
 Loading model from: /work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/lpips/weights/v0.1/vgg.pth
-Using coarse resolution (560, 560), and upsample res (864, 864)
 train: 1308
 val: 1
 test: 7286
@@ -841,30 +841,9 @@ EncoderDepthSplat(
     (2): Conv2d(37, 37, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
   )
 )
-Sat May 31 19:06:16 2025       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 570.86.15              Driver Version: 570.86.15      CUDA Version: 12.8     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA GeForce GTX 1080 Ti     On  |   00000000:08:00.0 Off |                  N/A |
-|  0%   44C    P2             60W /  125W |   10701MiB /  11264MiB |     19%      Default |
-|                                         |                        |                  N/A |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|    0   N/A  N/A          527571      C   python                                10696MiB |
-+-----------------------------------------------------------------------------------------+
-train step 0; scene = ['c5c50c5ff5b32b78']; context = [[31, 63]]; bound = [0.26387661695480347 1.0707019567489624]; loss = 15.887003
 Error executing job with overrides: ['+experiment=re10k', 'data_loader.train.batch_size=1', 'dataset.test_chunk_interval=10', 'trainer.max_steps=4800000', 'model.encoder.gaussian_adapter.gaussian_scale_max=0.3', 'model.encoder.upsample_factor=4', 'model.encoder.lowest_feature_resolution=4', 'checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth', 'output_dir=checkpoints/re10k-256x256-depthsplat-small', 'checkpointing.every_n_train_steps=100000', 'checkpointing.resume=False']
 Traceback (most recent call last):
-  File "/work/courses/3dv/35/depthsplat/src/main.py", line 236, in train
+  File "/work/courses/3dv/35/depthsplat/src/main.py", line 241, in train
     trainer.fit(model_wrapper, datamodule=data_module, ckpt_path=checkpoint_path)
   File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
     call._call_and_handle_interrupt(
@@ -924,26 +903,32 @@ Traceback (most recent call last):
     return wrapped_fn_impl(args, kwargs, bound, memos)
   File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/jaxtyping/_decorator.py", line 449, in wrapped_fn_impl
     out = fn(*args, **kwargs)
-  File "/work/courses/3dv/35/depthsplat/src/model/model_wrapper.py", line 193, in training_step
-    matches, certainty = self.roma_model.sample(warp, certainty)
-  File "/work/courses/3dv/35/RoMa/romatch/models/matcher.py", line 489, in sample
-    density = kde(good_matches, std=0.1)
-  File "/work/courses/3dv/35/RoMa/romatch/utils/kde.py", line 11, in kde
-    scores = (-torch.cdist(x,x)**2/(2*std**2)).exp()
-  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/torch/_tensor.py", line 41, in wrapped
-    return f(*args, **kwargs)
-torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.98 GiB. GPU 0 has a total capacity of 10.90 GiB of which 2.35 GiB is free. Including non-PyTorch memory, this process has 8.55 GiB memory in use. Of the allocated memory 7.07 GiB is allocated by PyTorch, and 1.27 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+  File "/work/courses/3dv/35/depthsplat/src/model/model_wrapper.py", line 271, in training_step
+    output_context = self.decoder.forward(
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/jaxtyping/_decorator.py", line 522, in wrapped_fn
+    return wrapped_fn_impl(args, kwargs, bound, memos)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/jaxtyping/_decorator.py", line 449, in wrapped_fn_impl
+    out = fn(*args, **kwargs)
+  File "/work/courses/3dv/35/depthsplat/src/model/decoder/decoder_splatting_cuda.py", line 47, in forward
+    color = render_cuda(
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/jaxtyping/_decorator.py", line 522, in wrapped_fn
+    return wrapped_fn_impl(args, kwargs, bound, memos)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/jaxtyping/_decorator.py", line 449, in wrapped_fn_impl
+    out = fn(*args, **kwargs)
+  File "/work/courses/3dv/35/depthsplat/src/model/decoder/cuda_splatting.py", line 135, in render_cuda
+    image, radii, depth, weights = rasterizer(
+ValueError: not enough values to unpack (expected 4, got 2)
 
 Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
-wandb: - 1.521 MB of 1.521 MB uploadedwandb: \ 1.521 MB of 1.525 MB uploadedwandb: | 1.566 MB of 1.566 MB uploadedwandb: 
+wandb: - 1.521 MB of 1.521 MB uploadedwandb: \ 1.566 MB of 1.566 MB uploadedwandb: 
 wandb: Run history:
 wandb: trainer/global_step ▁▁▁▁▁▁
 wandb: 
 wandb: Run summary:
 wandb: trainer/global_step 0
 wandb: 
-wandb: 🚀 View run re10k-256x256-depthsplat-small at: https://wandb.ai/seamoon2020-eth-z-rich/depthsplat/runs/bcc7uqzg
+wandb: 🚀 View run re10k-256x256-depthsplat-small at: https://wandb.ai/seamoon2020-eth-z-rich/depthsplat/runs/zikte9en
 wandb: ⭐️ View project at: https://wandb.ai/seamoon2020-eth-z-rich/depthsplat
 wandb: Synced 5 W&B file(s), 6 media file(s), 0 artifact file(s) and 0 other file(s)
-wandb: Find logs at: checkpoints/re10k-256x256-depthsplat-small/wandb/run-20250531_190504-bcc7uqzg/logs
+wandb: Find logs at: checkpoints/re10k-256x256-depthsplat-small/wandb/run-20250531_200712-zikte9en/logs
 wandb: WARNING The new W&B backend becomes opt-out in version 0.18.0; try it out with `wandb.require("core")`! See https://wandb.me/wandb-core for more information.
