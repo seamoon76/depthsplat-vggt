@@ -47,9 +47,9 @@ from src.visualization.vis_depth import viz_depth_tensor
 from PIL import Image
 from ..misc.stablize_camera import render_stabilization_path
 from .ply_export import save_gaussian_ply
-import sys
-sys.path.append('/work/courses/3dv/35/RoMa')
-from romatch import roma_indoor
+# import sys
+# sys.path.append('/work/courses/3dv/35/RoMa')
+# from romatch import roma_indoor
 from torchvision.transforms.functional import to_pil_image
 import pdb
 
@@ -124,6 +124,7 @@ class ModelWrapper(LightningModule):
 
     def __init__(
         self,
+        roma_model,
         optimizer_cfg: OptimizerCfg,
         test_cfg: TestCfg,
         train_cfg: TrainCfg,
@@ -153,7 +154,9 @@ class ModelWrapper(LightningModule):
         self.eval_cnt = 0
         self.supervise_correspondence_loss = True
         if self.supervise_correspondence_loss:
-            self.roma_model = roma_indoor(device='cuda')
+            # self.roma_model = roma_indoor(device='cuda')
+            # self.roma_model = tiny_roma_v1(device='cuda')
+            self.roma_model = roma_model
         if self.test_cfg.compute_scores:
             self.test_step_outputs = {}
             self.time_skip_steps_dict = {"encoder": 0, "decoder": 0}
@@ -189,7 +192,7 @@ class ModelWrapper(LightningModule):
                 im_A = to_pil_image(img_tensor_0)
                 img_tensor_1 = context_images[i][1]
                 im_B = to_pil_image(img_tensor_1)
-                warp, certainty = self.roma_model.match(im_A, im_B, device=context_images.device)
+                warp, certainty = self.roma_model.match(im_A, im_B)
                 matches, certainty = self.roma_model.sample(warp, certainty)
                 corres_confidence_list.append(certainty)
                 kptsA, kptsB = self.roma_model.to_pixel_coordinates(matches, H, W, H, W)
@@ -203,6 +206,7 @@ class ModelWrapper(LightningModule):
                         corres_map[i, 0, yA, xA] = xB  #x
                         corres_map[i, 1, yA, xA] = yB  # y
                         corres_map[i, 2, yA, xA] = 1.0  #valid mask
+                del warp, matches, certainty
             # print("corres_map shape:{}".format(corres_map.shape)) # B,3,H,W
         batch["context"]["corres_map"] = corres_map
         batch["context"]["corres_confidence"] = torch.stack(corres_confidence_list)

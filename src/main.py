@@ -18,7 +18,9 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 
 from pytorch_lightning.plugins.environments import LightningEnvironment
 from safetensors.torch import load_file
-
+import sys
+sys.path.append('/work/courses/3dv/35/RoMa')
+from romatch import tiny_roma_v1_outdoor, roma_indoor
 # Configure beartype and jaxtyping.
 with install_import_hook(
     ("src",),
@@ -153,7 +155,10 @@ def train(cfg_dict: DictConfig):
     torch.manual_seed(cfg_dict.seed + trainer.global_rank)
 
     encoder, encoder_visualizer = get_encoder(cfg.model.encoder)
+    roma_model = tiny_roma_v1_outdoor(device='cuda')
+    # roma_model = roma_indoor(device='cuda')
     model_wrapper = ModelWrapper(
+        roma_model,
         cfg.optimizer,
         cfg.test,
         cfg.train,

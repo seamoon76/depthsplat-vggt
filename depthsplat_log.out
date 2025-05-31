@@ -841,3 +841,109 @@ EncoderDepthSplat(
     (2): Conv2d(37, 37, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), padding_mode=replicate)
   )
 )
+Sat May 31 19:06:16 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.86.15              Driver Version: 570.86.15      CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce GTX 1080 Ti     On  |   00000000:08:00.0 Off |                  N/A |
+|  0%   44C    P2             60W /  125W |   10701MiB /  11264MiB |     19%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A          527571      C   python                                10696MiB |
++-----------------------------------------------------------------------------------------+
+train step 0; scene = ['c5c50c5ff5b32b78']; context = [[31, 63]]; bound = [0.26387661695480347 1.0707019567489624]; loss = 15.887003
+Error executing job with overrides: ['+experiment=re10k', 'data_loader.train.batch_size=1', 'dataset.test_chunk_interval=10', 'trainer.max_steps=4800000', 'model.encoder.gaussian_adapter.gaussian_scale_max=0.3', 'model.encoder.upsample_factor=4', 'model.encoder.lowest_feature_resolution=4', 'checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth', 'output_dir=checkpoints/re10k-256x256-depthsplat-small', 'checkpointing.every_n_train_steps=100000', 'checkpointing.resume=False']
+Traceback (most recent call last):
+  File "/work/courses/3dv/35/depthsplat/src/main.py", line 236, in train
+    trainer.fit(model_wrapper, datamodule=data_module, ckpt_path=checkpoint_path)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 538, in fit
+    call._call_and_handle_interrupt(
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 47, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 574, in _fit_impl
+    self._run(model, ckpt_path=ckpt_path)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 981, in _run
+    results = self._run_stage()
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/trainer/trainer.py", line 1025, in _run_stage
+    self.fit_loop.run()
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 205, in run
+    self.advance()
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/fit_loop.py", line 363, in advance
+    self.epoch_loop.run(self._data_fetcher)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 140, in run
+    self.advance(data_fetcher)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/training_epoch_loop.py", line 250, in advance
+    batch_output = self.automatic_optimization.run(trainer.optimizers[0], batch_idx, kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 190, in run
+    self._optimizer_step(batch_idx, closure)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 268, in _optimizer_step
+    call._call_lightning_module_hook(
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 167, in _call_lightning_module_hook
+    output = fn(*args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/core/module.py", line 1306, in optimizer_step
+    optimizer.step(closure=optimizer_closure)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/core/optimizer.py", line 153, in step
+    step_output = self._strategy.optimizer_step(self._optimizer, closure, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/strategies/strategy.py", line 238, in optimizer_step
+    return self.precision_plugin.optimizer_step(optimizer, model=model, closure=closure, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/plugins/precision/precision.py", line 122, in optimizer_step
+    return optimizer.step(closure=closure, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/torch/optim/lr_scheduler.py", line 130, in wrapper
+    return func.__get__(opt, opt.__class__)(*args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/torch/optim/optimizer.py", line 484, in wrapper
+    out = func(*args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/torch/optim/optimizer.py", line 89, in _use_grad
+    ret = func(self, *args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/torch/optim/adamw.py", line 204, in step
+    loss = closure()
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/plugins/precision/precision.py", line 108, in _wrap_closure
+    closure_result = closure()
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 144, in __call__
+    self._result = self.closure(*args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 116, in decorate_context
+    return func(*args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 129, in closure
+    step_output = self._step_fn()
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/loops/optimization/automatic.py", line 317, in _training_step
+    training_step_output = call._call_strategy_hook(trainer, "training_step", *kwargs.values())
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/trainer/call.py", line 319, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/pytorch_lightning/strategies/strategy.py", line 390, in training_step
+    return self.lightning_module.training_step(*args, **kwargs)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/jaxtyping/_decorator.py", line 522, in wrapped_fn
+    return wrapped_fn_impl(args, kwargs, bound, memos)
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/jaxtyping/_decorator.py", line 449, in wrapped_fn_impl
+    out = fn(*args, **kwargs)
+  File "/work/courses/3dv/35/depthsplat/src/model/model_wrapper.py", line 193, in training_step
+    matches, certainty = self.roma_model.sample(warp, certainty)
+  File "/work/courses/3dv/35/RoMa/romatch/models/matcher.py", line 489, in sample
+    density = kde(good_matches, std=0.1)
+  File "/work/courses/3dv/35/RoMa/romatch/utils/kde.py", line 11, in kde
+    scores = (-torch.cdist(x,x)**2/(2*std**2)).exp()
+  File "/work/courses/3dv/35/envs/depthsplat/lib/python3.10/site-packages/torch/_tensor.py", line 41, in wrapped
+    return f(*args, **kwargs)
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 2.98 GiB. GPU 0 has a total capacity of 10.90 GiB of which 2.35 GiB is free. Including non-PyTorch memory, this process has 8.55 GiB memory in use. Of the allocated memory 7.07 GiB is allocated by PyTorch, and 1.27 GiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+wandb: - 1.521 MB of 1.521 MB uploadedwandb: \ 1.521 MB of 1.525 MB uploadedwandb: | 1.566 MB of 1.566 MB uploadedwandb: 
+wandb: Run history:
+wandb: trainer/global_step ▁▁▁▁▁▁
+wandb: 
+wandb: Run summary:
+wandb: trainer/global_step 0
+wandb: 
+wandb: 🚀 View run re10k-256x256-depthsplat-small at: https://wandb.ai/seamoon2020-eth-z-rich/depthsplat/runs/bcc7uqzg
+wandb: ⭐️ View project at: https://wandb.ai/seamoon2020-eth-z-rich/depthsplat
+wandb: Synced 5 W&B file(s), 6 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: checkpoints/re10k-256x256-depthsplat-small/wandb/run-20250531_190504-bcc7uqzg/logs
+wandb: WARNING The new W&B backend becomes opt-out in version 0.18.0; try it out with `wandb.require("core")`! See https://wandb.me/wandb-core for more information.
