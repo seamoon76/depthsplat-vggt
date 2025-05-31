@@ -53,3 +53,6 @@ gaussian_regressor_channels: 64
 
 # only depth
 train_depth_only: false
+
+# adjust camera pose
+pose_opt: true

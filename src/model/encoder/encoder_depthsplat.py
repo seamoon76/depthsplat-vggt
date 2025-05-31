@@ -19,7 +19,8 @@ import torch.nn.functional as F
 
 from .unimatch.mv_unimatch import MultiViewUniMatch
 from .unimatch.dpt_head import DPTHead
-
+from .utils import PoseAdjustHead, rotation_6d_to_matrix
+import pdb
 
 @dataclass
 class EncoderDepthSplatCfg:
@@ -80,6 +81,7 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
             vit_type=cfg.monodepth_vit_type,
             unet_channels=cfg.depth_unet_channels,
             grid_sample_disable_cudnn=cfg.grid_sample_disable_cudnn,
+            pose_opt=True
         )
 
         if self.cfg.train_depth_only:
@@ -101,7 +103,10 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
         
         # gaussians adapter
         self.gaussian_adapter = GaussianAdapter(cfg.gaussian_adapter)
-
+        self.cfg.pose_opt=True
+        if self.cfg.pose_opt:
+            self.pose_adjuster = PoseAdjustHead(in_channels=64)
+            self.register_buffer("identity", torch.tensor([1.0, 0.0, 0.0, 0.0, 1.0, 0.0]))
         # concat(img, depth, match_prob, features)
         in_channels = 3 + 1 + 1 + feature_upsampler_channels
         channels = self.cfg.gaussian_regressor_channels
@@ -213,6 +218,19 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
                                           0] if self.cfg.num_scales == 1 else results_dict["features_mv"][::-1]
                                           )
 
+        if self.cfg.pose_opt:
+            # https://github.com/nerfstudio-project/gsplat/blob/main/examples/utils.py
+            pose_deltas = self.pose_adjuster(features)  # [B, 9]
+            camtoworlds = context["extrinsics"] # [B,2,4,4]
+            batch_dims = camtoworlds.shape[:-2]
+            dx, drot = pose_deltas[..., :3], pose_deltas[..., 3:]
+            rot = rotation_6d_to_matrix(
+                drot + self.identity.expand(*batch_dims, -1)
+            )  # (..., 3, 3)
+            transform = torch.eye(4, device=pose_deltas.device).repeat((*batch_dims, 1, 1))
+            transform[..., :3, :3] = rot
+            transform[..., :3, 3] = dx
+            camtoworlds = torch.matmul(camtoworlds, transform)
         # match prob from softmax
         # [BV, D, H, W] in feature resolution
         match_prob = results_dict['match_probs'][-1]

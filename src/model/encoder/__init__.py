@@ -4,6 +4,7 @@ from .encoder import Encoder
 from .encoder_depthsplat import EncoderDepthSplat, EncoderDepthSplatCfg
 from .visualization.encoder_visualizer import EncoderVisualizer
 from .visualization.encoder_visualizer_depthsplat import EncoderVisualizerDepthSplat
+from .utils import PoseAdjustHead
 
 ENCODERS = {
     "depthsplat": (EncoderDepthSplat, EncoderVisualizerDepthSplat),
