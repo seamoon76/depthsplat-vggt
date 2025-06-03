@@ -172,7 +172,7 @@ class ModelWrapper(LightningModule):
         if self.supervise_correspondence_loss:
             camtoworlds = gaussians["camtoworlds"]
             assert camtoworlds != None
-            batch["context"]["extrinsics"] = camtoworlds
+            batch["context"]["extrinsics"][:,1] = camtoworlds[:,1]
         if isinstance(gaussians, dict):
             pred_depths = gaussians["depths"]
             gaussians = gaussians["gaussians"]
