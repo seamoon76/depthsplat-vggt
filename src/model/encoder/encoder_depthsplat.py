@@ -232,7 +232,7 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
             transform[..., :3, :3] = rot
             transform[..., :3, 3] = dx
             camtoworlds = torch.matmul(camtoworlds, transform)
-            context["extrinsics"] = camtoworlds
+            context["extrinsics"][:,1] = camtoworlds[:,1]
         # match prob from softmax
         # [BV, D, H, W] in feature resolution
         match_prob = results_dict['match_probs'][-1]
