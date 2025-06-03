@@ -2,21 +2,49 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class PoseAdjustHead(nn.Module):
-    def __init__(self, in_channels=64, hidden_dim=128):
+
+class SelfAttentionBlock(nn.Module):
+    def __init__(self, dim, num_heads=4, mlp_ratio=4.0, dropout=0.1):
         super().__init__()
-        self.global_pool = nn.AdaptiveAvgPool2d(1)  # -> [B, C, 1, 1]
-        self.fc = nn.Sequential(
-            nn.Flatten(),               # -> [B, C]
-            nn.Linear(in_channels, hidden_dim),
+        self.norm1 = nn.LayerNorm(dim)
+        self.attn = nn.MultiheadAttention(embed_dim=dim, num_heads=num_heads, batch_first=True)
+        self.norm2 = nn.LayerNorm(dim)
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, int(dim * mlp_ratio)),
             nn.ReLU(),
-            nn.Linear(hidden_dim, 9)    # output [B, 9]
+            nn.Linear(int(dim * mlp_ratio), dim),
+        )
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):  # x: [B, N, dim]
+        x = x + self.dropout(self.attn(self.norm1(x), self.norm1(x), self.norm1(x))[0])
+        x = x + self.dropout(self.mlp(self.norm2(x)))
+        return x
+
+class PoseAdjustHead(nn.Module):
+    def __init__(self, input_channels=64, dim=128, num_heads=4, num_layers=4):
+        super().__init__()
+        self.input_proj = nn.Conv2d(input_channels, dim, kernel_size=1)  # [B, 64, 256, 256] -> [B, dim, 256, 256]
+        
+        self.transformer_blocks = nn.Sequential(
+            *[SelfAttentionBlock(dim=dim, num_heads=num_heads) for _ in range(num_layers)]
         )
 
-    def forward(self, feat):  # feat: [B, C, H, W]
-        x = self.global_pool(feat)
-        out = self.fc(x)
-        return out  # [B, 9]
+        self.output_mlp = nn.Sequential(
+            nn.LayerNorm(dim),
+            nn.Linear(dim, 9)
+        )
+
+    def forward(self, x):  # x: [B, 64, 256, 256]
+        x = self.input_proj(x)                 # [B, dim, 256, 256]
+        B, C, H, W = x.shape
+        x = x.flatten(2).transpose(1, 2)       # [B, N=256*256, dim]
+
+        x = self.transformer_blocks(x)         # [B, N, dim]
+        x = x.mean(dim=1)                      # global average pooling over N -> [B, dim]
+        out = self.output_mlp(x)               # -> [B, 9]
+        return out
+
 
 def rotation_6d_to_matrix(d6: torch.Tensor) -> torch.Tensor:
     """
