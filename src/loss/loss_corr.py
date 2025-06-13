@@ -46,10 +46,11 @@ class LossCorr(Loss[LossCorrCfg, LossCorrCfgWrapper]):
         if global_step < self.cfg.apply_after_step:
             return torch.tensor(0, dtype=torch.float32, device=image.device)
         corres_map = batch["context"]["corres_map"] # B, 3, H, W, the first 2 are corr, the last is mask for sparse match
-        corres_mask = corres_map[:,2:]!=-1 # B, 1, H, W. 1 means there is valid matching pixel
+        corres_mask = corres_map[:,2]!=-1 # B, 1, H, W. 1 means there is valid matching pixel
         assert corres_mask.sum()!=0 # at least one valid corr 
-        confidence = batch["context"]["corres_confidence"]
-        context_depth = batch["context"]["context_depth"] # B,2,H,W
+        # confidence = batch["context"]["corres_confidence"] # [B, N]
+        confidence = corres_map[:,2] # B,H,W
+        context_depth = batch["context"]["context_depth"].detach() # B,2,H,W
         context_pose = batch["context"]["extrinsics"] # B,2,4,4.   2 is for two view poses,4x4 homogenious extrinsics
         context_intrinsics = batch["context"]["intrinsics"] # B,2,3,3
         # Assume B,2,H,W shape inputs, already on same device
@@ -62,9 +63,12 @@ class LossCorr(Loss[LossCorrCfg, LossCorrCfgWrapper]):
         p_coords = torch.cat([x_p, y_p], dim=1).float()  # shape B,2,H,W
 
         # choose valid match
-        valid_mask = corres_mask.squeeze(1)  # B,H,W
-        p_coords = p_coords.permute(0, 2, 3, 1)[valid_mask]      # [N, 2]
-        q_coords = corres_map[:, :2].permute(0, 2, 3, 1)[valid_mask]  # [N, 2]
+        valid_mask = corres_mask # .squeeze(1)  # B,H,W
+        p_coords = p_coords.permute(0, 2, 3, 1)[valid_mask]      # [B,H,W,2]
+        q_coords = corres_map[:, :2].permute(0, 2, 3, 1)[valid_mask]  # [B,H,W,2]
+        confidence = confidence[valid_mask]
+
+        # assert p_coords.shape[0] == q_coords.shape[0] == confidence.shape[1]
 
         # depth and camera
         depth_i = context_depth[:, 0:1].permute(0, 2, 3, 1)[valid_mask]  # [N, 1]
@@ -94,6 +98,6 @@ class LossCorr(Loss[LossCorrCfg, LossCorrCfgWrapper]):
         q_proj = K_j_mat.bmm(proj_xyz.unsqueeze(-1)).squeeze(-1)  # [N, 3]
         q_proj_xy = q_proj[:, :2]  # [N, 2]
 
-        # Huber loss between projected q and ground-truth q
-        loss = self.huber_loss(q_proj_xy, q_coords, reduction='none').sum(dim=-1)
+        # Huber loss between projected q and ground-truth q TIDO: add confidence
+        loss =  self.huber_loss(q_proj_xy, q_coords, reduction='none').sum(dim=-1)
         return self.cfg.weight * loss.mean()

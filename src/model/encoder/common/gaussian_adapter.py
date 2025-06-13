@@ -93,7 +93,7 @@ class GaussianAdapter(nn.Module):
         return Gaussians(
             means=means,
             covariances=covariances,
-            harmonics=rotate_sh(sh, c2w_rotations[..., None, :, :]),
+            harmonics=sh, #rotate_sh(sh, c2w_rotations[..., None, :, :]),
             opacities=opacities,
             # NOTE: These aren't yet rotated into world space, but they're only used for
             # exporting Gaussians to ply files. This needs to be fixed...

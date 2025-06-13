@@ -172,20 +172,21 @@ class ModelWrapper(LightningModule):
         if self.supervise_correspondence_loss:
             camtoworlds = gaussians["camtoworlds"]
             assert camtoworlds != None
-            batch["context"]["extrinsics"][:,1] = camtoworlds[:,1]
+            batch["context"]["extrinsics"] = camtoworlds
         if isinstance(gaussians, dict):
             pred_depths = gaussians["depths"]
             gaussians = gaussians["gaussians"]
         supervise_intermediate_depth = False
         
         corres_map = None
+        conf_threshold = 0.95 # TODO: move this to config
         if self.supervise_correspondence_loss:
             # compute corr for input images
             context_images = batch["context"]["image"]
             B = context_images.shape[0]
             H, W = context_images.shape[-2], context_images.shape[-1]
             corres_map = torch.full((B, 3, H, W), -1.0, dtype=torch.float32, device=context_images.device)
-            corres_confidence_list = []
+            # corres_confidence_list = []
             for i in range(B):
                 # print("context image shape{}".format(context_images.shape))  # should be (B,2, 3, 360, 640) or (B,3, 3, 360, 640)
                 img_tensor_0 = context_images[i][0]
@@ -194,22 +195,25 @@ class ModelWrapper(LightningModule):
                 im_B = to_pil_image(img_tensor_1)
                 warp, certainty = self.roma_model.match(im_A, im_B)
                 matches, certainty = self.roma_model.sample(warp, certainty)
-                corres_confidence_list.append(certainty)
+                
                 kptsA, kptsB = self.roma_model.to_pixel_coordinates(matches, H, W, H, W)
+                # filter_conf = []
                 for idx in range(kptsA.shape[0]):
                     xA, yA = kptsA[idx]
                     xB, yB = kptsB[idx]
                 
                     xA = int(round(xA.item()))
                     yA = int(round(yA.item()))
-                    if 0 <= xA < W and 0 <= yA < H:
+                    if certainty[idx] >= conf_threshold and 0 <= xA < W and 0 <= yA < H:
                         corres_map[i, 0, yA, xA] = xB  #x
                         corres_map[i, 1, yA, xA] = yB  # y
-                        corres_map[i, 2, yA, xA] = 1.0  #valid mask
+                        corres_map[i, 2, yA, xA] = certainty[idx]  #valid mask
+                        # filter_conf.append(certainty[idx])
                 del warp, matches, certainty
+                # corres_confidence_list.append(torch.stack(filter_conf))
             # print("corres_map shape:{}".format(corres_map.shape)) # B,3,H,W
         batch["context"]["corres_map"] = corres_map
-        batch["context"]["corres_confidence"] = torch.stack(corres_confidence_list)
+        # batch["context"]["corres_confidence"] = torch.stack(corres_confidence_list)
 
         if gaussians.means.size(0) != batch["target"]["extrinsics"].size(0):
             supervise_intermediate_depth = True
@@ -278,7 +282,7 @@ class ModelWrapper(LightningModule):
                     depth_mode=self.train_cfg.depth_mode,
                     return_depth=True
                 )
-                context_depth=output_context.context_depth.unsqueeze(0) # b,v,h,w
+                context_depth=output_context.context_depth #.unsqueeze(0) # b,v,h,w
                 # print("pred detph max{}".format(context_depth.max()))
                 # print("vggt depth max{}".format(batch["context"]["far"]))
                 #print("context depth shape:{}".format(context_depth.shape))

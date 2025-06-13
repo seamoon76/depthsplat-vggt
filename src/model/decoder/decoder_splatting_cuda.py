@@ -8,7 +8,7 @@ from torch import Tensor
 
 from ...dataset import DatasetCfg
 from ..types import Gaussians
-from .cuda_splatting import DepthRenderingMode, render_cuda, render_depth_cuda
+from .cuda_splatting import DepthRenderingMode, render_cuda, render_depth_cuda, render_cuda_gsplat
 from .decoder import Decoder, DecoderOutput
 
 
@@ -32,7 +32,7 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
             persistent=False,
         )
 
-    def forward(
+    def forward_origin(
         self,
         gaussians: Gaussians,
         extrinsics: Float[Tensor, "batch view 4 4"],
@@ -71,6 +71,37 @@ class DecoderSplattingCUDA(Decoder[DecoderSplattingCUDACfg]):
             context_depth = context_depth if return_depth else None
         )
 
+    # gsplat render forward
+    def forward(
+        self,
+        gaussians: Gaussians,
+        extrinsics: Float[Tensor, "batch view 4 4"],
+        intrinsics: Float[Tensor, "batch view 3 3"],
+        near: Float[Tensor, "batch view"],
+        far: Float[Tensor, "batch view"],
+        image_shape: tuple[int, int],
+        depth_mode: DepthRenderingMode | None = None,
+        return_depth = False
+    ) -> DecoderOutput:
+
+        color, context_depth = render_cuda_gsplat(
+            extrinsics,
+            intrinsics,
+            near.mean(dim=1) ,
+            far.mean(dim=1),
+            image_shape,
+            gaussians.means,
+            gaussians.covariances,
+            gaussians.harmonics,
+            gaussians.opacities,
+        )
+
+        return DecoderOutput(
+            color,
+            None if depth_mode is None else context_depth,
+            context_depth=context_depth if return_depth else None
+        )
+    
     def render_depth(
         self,
         gaussians: Gaussians,
