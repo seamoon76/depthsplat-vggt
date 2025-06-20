@@ -2,4 +2,5 @@
 
 dataset:
   view_sampler:
-    index_path: assets/evaluation_index_re10k.json
+    index_path: assets/evaluation_index_re10k.json # "assets/evaluation_index_re10k_small.json" for overlap test{small/medium/high/ignore}
+
