@@ -45,8 +45,9 @@ We provide a minimal example set of processed training and test data at this [po
 
 We use the same camera views with DepthSplat and NoPoSplat for a fire comparison. 
 
-<summary><b>To evaluate our model on the specific camera views, use:</b></summary> 
+
 <detail>
+  <summary><b>To evaluate our model on the specific camera views, use:</b></summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -63,8 +64,9 @@ test.save_image=true
 
 According to NoPoSplat, we can divide the camera views as high/medium/small/ignore overlap degrees, we use the same view division protocals with NoPoSplat.
 
-<summary><b>To evaluate our model on the high camera views, use:</b></summary> 
+
 <detail>
+<summary><b>To evaluate our model on the high camera views, use:</b></summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -79,8 +81,9 @@ test.save_image=true
 ```
 </detail>
 
-<summary><b>To evaluate our model on the medium camera views, use:</b></summary> 
+
 <detail>
+<summary><b>To evaluate our model on the medium camera views, use:</b></summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -95,8 +98,9 @@ test.save_image=true
 ```
 </detail>
 
-<summary><b>To evaluate our model on the small camera views, use:</b></summary> 
+
 <detail>
+<summary><b>To evaluate our model on the small camera views, use:</b></summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -111,8 +115,9 @@ test.save_image=true
 ```
 </detail>
 
-<summary><b>To evaluate our model on the ignore camera views, use:</b></summary> 
+
 <detail>
+<summary><b>To evaluate our model on the ignore camera views, use:</b></summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
