@@ -1,3 +1,9 @@
+#################################################################
+# This file is modified from DepthSplat's open-sourced code
+# Reference: https://github.com/cvg/depthsplat/tree/main/src/dataset/dataset_re10k.py
+# We add code for reading estimated camera pose and depth map min/max, and code for rotation normalization
+#################################################################
+
 import json
 from dataclasses import dataclass
 from functools import cached_property
