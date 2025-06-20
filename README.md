@@ -164,7 +164,7 @@ checkpointing.resume=False
 We put the calibration-based method into `colmap` branch, and the correspondence loss feature into `corr` branch. Please check these branches' readme file and our report for more information.
 
 ## Citation
-This code repositories is modified from DepthSplat. So we keep the citation information of DepthSplat here.
+This code repository is modified from DepthSplat. So we keep the citation information of DepthSplat here.
 
 ```
 @inproceedings{xu2024depthsplat,
