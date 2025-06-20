@@ -3,11 +3,6 @@
   <div align="center"></div>
 </p>
 
-
-<p align="left">
-Pose-free feed-forward 3D Gaussian Splatting (3DGS) methods aim to predict 3D Gaussian parameters directly from sparse-view images without access to ground-truth camera poses. Compared to existing one-stage methods that directly regress Gaussian parameters, two-stage approaches first estimate camera poses and then apply pose-dependent 3DGS reconstruction techniques. In this work, we benchmark the performance of both strategies and further explore ways to adapt the pose-dependent DepthSplat method into a pose-free framework. Specifically, we propose two approaches: (1) calibrating the estimated poses into a consistent coordinate system and scale, and (2) applying a correspondences loss to refine noisy poses and fine-tune the DepthSplat model. Our results demonstrate that the finetuning approach is especially promising, requiring only a small amount of training data and no ground-truth pose supervision.
-</p>
-
 ## Installation
 
 Our code is developed using PyTorch 2.4.0, CUDA 12.4, and Python 3.10. 
@@ -37,141 +32,11 @@ Put the `pretrained` directory under the root path of this project.
 
 ## Datasets
 
-We use Re10k dataset. To download the raw dataset preparation, please refer to [DATASETS.md](DATASETS.md) following DepthSplat.
+We use Re10k dataset. Firstly, please refer to [DepthSplat's DATASETS.md](https://github.com/cvg/depthsplat/blob/main/DATASETS.md) to download the Re10k dataset.
 
-Then we use [VGGT](https://github.com/facebookresearch/vggt/tree/main) to process the Re10k data and estimate camera poses and depth map. Processed data should be put at `datasets/vggt_re10k`. We provide a minimal example set of data at this [polybox link(TODO)](). You can download the `datasets` directory and put it under the root path of this project.
+Secondly, we use [VGGT](https://github.com/facebookresearch/vggt/tree/main) to process the Re10k data to estimate camera poses and depth maps. Please clone the [VGGT](https://github.com/facebookresearch/vggt/tree/main) code and replace its [TODO]() file with our provided [TODO]() file, and store the processed data at `datasets/vggt_re10k`.
 
-## Gaussian Splatting
-
-
-### Useful configs
-
-
-<!-- <details>
-<summary>Click to expand</summary> -->
-
-
-
-- `dataset.test_chunk_interval=1`: Running on the full test set can be time-consuming due to the large number of scenes. You can run on a fraction of the test set for debugging or validation purposes. For example, setting `dataset.test_chunk_interval=10` will evaluate on 1/10 of the full test set.
-- `output_dir=outputs/depthsplat`: Directory to save the results.
-- `test.save_image=true`: Save the rendered images.
-- `test.save_gt_image=true`: Save the ground truth (GT) images.
-- `test.save_input_images=true`: Save the input images.
-- `test.save_depth=true`: Save the predicted depths.
-- `test.save_depth_concat_img=true`: Save the concatenated images and depths.
-- `test.save_depth_npy=true`: Save the raw depth predictions in `.npy`.
-- `test.save_gaussian=true`: Save the reconstructed Gaussians in `.ply` files, which can be viewed using online viewers like [SuperSplat](https://superspl.at/editor), [Antimatter15](https://antimatter15.com/splat/), etc.
-
-<!-- </details> -->
-
-
-### Rendering Video
-
-DepthSplat enables feed-forward reconstruction from 12 input views (512x960 resolutions) in 0.6 seconds on a single A100 GPU.
-
-#### RealEstate10K
-
-
-<details>
-<summary>6 input views at 512x960 resolutions: click to expand the script</summary>
-
-- A preprocessed subset is provided to quickly run inference with our model, please refer to the details in [DATASETS.md](DATASETS.md).
-
-```
-# render video on re10k (need to have ffmpeg installed)
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=dl3dv \
-dataset.test_chunk_interval=1 \
-dataset.roots=[datasets/re10k_720p] \
-dataset.image_shape=[512,960] \
-dataset.ori_image_shape=[720,1280] \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=8 \
-model.encoder.monodepth_vit_type=vitb \
-model.encoder.gaussian_adapter.gaussian_scale_max=0.1 \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-base-re10kdl3dv-448x768-randview2-6-f8ddd845.pth \
-mode=test \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.num_context_views=6 \
-dataset.view_sampler.index_path=assets/re10k_ctx_6v_video.json \
-test.save_video=true \
-test.compute_scores=false \
-test.render_chunk_size=10 \
-output_dir=outputs/depthsplat-re10k-512x960
-```
-
-</details>
-
-
-
-https://github.com/user-attachments/assets/3f228a3f-8d54-4a90-9db4-ff0874150883
-
-
-
-<details>
-<summary>2 input views at 256x256 resolutions:</summary>
-
-
-```
-# render video on re10k (need to have ffmpeg installed)
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
-dataset.test_chunk_interval=100 \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=2 \
-model.encoder.lowest_feature_resolution=4 \
-model.encoder.monodepth_vit_type=vitl \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-large-re10k-256x256-view2-e0f0f27a.pth \
-mode=test \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.index_path=assets/evaluation_index_re10k_video.json \
-test.save_video=true \
-test.compute_scores=false
-output_dir=outputs/depthsplat-re10k
-```
-
-</details>
-
-
-
-#### DL3DV
-
-<details>
-<summary>12 input views at 512x960 resolutions:</summary>
-
-- A preprocessed subset is provided to quickly run inference with our model, please refer to the details in [DATASETS.md](DATASETS.md).
-
-- Tip: use `test.stablize_camera=true` to stablize the camera trajectory.
-
-```
-# render video on dl3dv (need to have ffmpeg installed)
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=dl3dv \
-dataset.test_chunk_interval=1 \
-dataset.roots=[datasets/dl3dv_960p] \
-dataset.image_shape=[512,960] \
-dataset.ori_image_shape=[540,960] \
-model.encoder.upsample_factor=8 \
-model.encoder.lowest_feature_resolution=8 \
-model.encoder.gaussian_adapter.gaussian_scale_max=0.1 \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10kdl3dv-448x768-randview4-10-c08188db.pth \
-mode=test \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.num_context_views=12 \
-dataset.view_sampler.index_path=assets/dl3dv_start_0_distance_100_ctx_12v_video.json \
-test.save_video=true \
-test.stablize_camera=true \
-test.compute_scores=false \
-test.render_chunk_size=10 \
-output_dir=outputs/depthsplat-dl3dv-512x960
-```
-
-</details>
-
-
-
-
-https://github.com/user-attachments/assets/ea6d3b9c-af80-43e6-9a12-36c67e874366
-
-
+We provide a minimal example set of processed training and test data at this [polybox link(TODO)](). You can download the `datasets` directory and put it under the root path of this project for a quick validation.
 
 
 ### Evaluation
@@ -180,183 +45,20 @@ https://github.com/user-attachments/assets/ea6d3b9c-af80-43e6-9a12-36c67e874366
 
 #### RealEstate10K
 
-<details>
-<summary>Evaluation scripts (small, base, and large models)</summary>
+<summary><b>To evaluate our fine-tuned model, use:</b></summary> -->
 
-Please note that the numbers may differ slightly from those reported in the paper, as the models have been re-trained.
-
-- To evalute the large model:
 ```
-# Table 1 of depthsplat paper
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
-dataset.test_chunk_interval=1 \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=2 \
+dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
 model.encoder.lowest_feature_resolution=4 \
-model.encoder.monodepth_vit_type=vitl \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-large-re10k-256x256-view2-e0f0f27a.pth \
-mode=test \
-dataset/view_sampler=evaluation
-```
-
-<!-- </details>
-
-<details>
-<summary><b>To evaluate the base model, use:</b></summary> -->
-
-- To evaluate the base model:
+checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+mode=test dataset/view_sampler=evaluation \
+dataset.view_sampler.index_path=assets/evaluation_index_re10k.json \
+test.save_input_images=true \
+test.save_gt_image=true \
+test.save_image=true
 
 ```
-# Table 1 of depthsplat paper
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
-dataset.test_chunk_interval=1 \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=2 \
-model.encoder.lowest_feature_resolution=4 \
-model.encoder.monodepth_vit_type=vitb \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-base-re10k-256x256-view2-ca7b6795.pth \
-mode=test \
-dataset/view_sampler=evaluation
-```
-
-<!-- </details>
-
-
-<details>
-<summary><b>To evaluate the small model, use:</b></summary> -->
-
-- To evaluate the small model: 
-
-```
-# Table 1 of depthsplat paper
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
-dataset.test_chunk_interval=1 \
-model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth \
-mode=test \
-dataset/view_sampler=evaluation
-```
-</details>
-
-
-#### DL3DV
-
-<details>
-<summary>Evaluation scripts (6, 4, 2 input views, and zero-shot generalization)</summary>
-
-- 6 input views:
-
-```
-# Table 7 of depthsplat paper
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=dl3dv \
-mode=test \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.num_context_views=6 \
-dataset.view_sampler.index_path=assets/dl3dv_start_0_distance_50_ctx_6v_video_0_50.json \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=8 \
-model.encoder.monodepth_vit_type=vitb \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-base-dl3dv-256x448-randview2-6-02c7b19d.pth
-```
-
-
-<!-- <details>
-<summary><b>4 input views:</b></summary> -->
-
-- 4 input views:
-
-```
-# Table 7 of depthsplat paper
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=dl3dv \
-mode=test \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.num_context_views=4 \
-dataset.view_sampler.index_path=assets/dl3dv_start_0_distance_50_ctx_4v_video_0_50.json \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=8 \
-model.encoder.monodepth_vit_type=vitb \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-base-dl3dv-256x448-randview2-6-02c7b19d.pth
-```
-
-<!-- </details>
-
-
-<details>
-<summary><b>2 input views:</b></summary> -->
-
-- 2 input views:
-
-```
-# Table 7 of depthsplat paper
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=dl3dv \
-mode=test \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.num_context_views=2 \
-dataset.view_sampler.index_path=assets/dl3dv_start_0_distance_50_ctx_2v_video_0_50.json \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=8 \
-model.encoder.monodepth_vit_type=vitb \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-base-dl3dv-256x448-randview2-6-02c7b19d.pth
-```
-
-<!-- </details>
-
-
-<details>
-<summary><b>Zero-shot generalization from RealEstate10K to DL3DV:</b></summary> -->
-
-- Zero-shot generalization from RealEstate10K to DL3DV:
-
-```
-# Table 8 of depthsplat paper
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=dl3dv \
-mode=test \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.num_context_views=2 \
-dataset.view_sampler.index_path=assets/dl3dv_start_0_distance_10_ctx_2v_tgt_4v.json \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=2 \
-model.encoder.lowest_feature_resolution=4 \
-model.encoder.monodepth_vit_type=vitl \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-large-re10k-256x256-view2-e0f0f27a.pth
-```
-
-
-</details>
-
-
-
-
-#### ACID
-
-
-<details>
-<summary>Evaluation scripts (zero-shot generalization)</summary>
-
-- Zero-shot generalization from RealEstate10K to ACID:
-
-```
-# Table 8 of depthsplat paper
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
-mode=test \
-dataset.roots=[datasets/acid] \
-dataset.view_sampler.index_path=assets/evaluation_index_acid.json \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.num_context_views=2 \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=2 \
-model.encoder.lowest_feature_resolution=4 \
-model.encoder.monodepth_vit_type=vitl \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-large-re10k-256x256-view2-e0f0f27a.pth
-```
-
-
-</details>
-
 
 ### Training
 
