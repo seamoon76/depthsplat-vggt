@@ -4,7 +4,7 @@
 </p>
 
 
-<p align="center">
+<p align="left">
 Pose-free feed-forward 3D Gaussian Splatting (3DGS) methods aim to predict 3D Gaussian parameters directly from sparse-view images without access to ground-truth camera poses. Compared to existing one-stage methods that directly regress Gaussian parameters, two-stage approaches first estimate camera poses and then apply pose-dependent 3DGS reconstruction techniques. In this work, we benchmark the performance of both strategies and further explore ways to adapt the pose-dependent DepthSplat method into a pose-free framework. Specifically, we propose two approaches: (1) calibrating the estimated poses into a consistent coordinate system and scale, and (2) applying a correspondences loss to refine noisy poses and fine-tune the DepthSplat model. Our results demonstrate that the finetuning approach is especially promising, requiring only a small amount of training data and no ground-truth pose supervision.
 </p>
 
@@ -28,24 +28,18 @@ pip install torch==2.4.0 torchvision==0.19.0 --index-url https://download.pytorc
 pip install -r requirements.txt
 ```
 
-## Model Zoo
+## Pre-trained models
 
-Our pre-trained models are hosted on [Hugging Face 🤗](https://huggingface.co/haofeixu/depthsplat).
+Our pre-trained models can be downloaded from this [polybox link(TODO)]().
 
-Model details can be found at [MODEL_ZOO.md](MODEL_ZOO.md).
+Put the `pretrained` directory under the root path of this project.
 
-
-## Camera Conventions
-
-The camera intrinsic matrices are normalized, with the first row divided by the image width and the second row divided by the image height.
-
-The camera extrinsic matrices follow the OpenCV convention for camera-to-world transformation (+X right, +Y down, +Z pointing into the screen).
 
 ## Datasets
 
-For dataset preparation, please refer to [DATASETS.md](DATASETS.md).
+We use Re10k dataset. To download the raw dataset preparation, please refer to [DATASETS.md](DATASETS.md) following DepthSplat.
 
-
+Then we use [VGGT](https://github.com/facebookresearch/vggt/tree/main) to process the Re10k data and estimate camera poses and depth map. Processed data should be put at `datasets/vggt_re10k`. We provide a minimal example set of data at this [polybox link(TODO)](). You can download the `datasets` directory and put it under the root path of this project.
 
 ## Gaussian Splatting
 
