@@ -1,41 +1,12 @@
 <p align="center">
-  <h1 align="center">DepthSplat: Connecting Gaussian Splatting and Depth</h1>
-  <p align="center">
-    <a href="https://haofeixu.github.io/">Haofei Xu</a>
-    ·
-    <a href="https://pengsongyou.github.io/">Songyou Peng</a>
-    ·
-    <a href="https://fangjinhuawang.github.io/">Fangjinhua Wang</a>
-    ·
-    <a href="https://hermannblum.net/">Hermann Blum</a>
-    ·
-    <a href="https://scholar.google.com/citations?user=U9-D8DYAAAAJ">Daniel Barath</a>
-    ·
-    <a href="http://www.cvlibs.net/">Andreas Geiger</a>
-    ·
-    <a href="https://people.inf.ethz.ch/marc.pollefeys/">Marc Pollefeys</a>
-  </p>
-  <h3 align="center">CVPR 2025</h3>
-  <h3 align="center"><a href="https://arxiv.org/abs/2410.13862">Paper</a> | <a href="https://haofeixu.github.io/depthsplat/">Project Page</a> | <a href="https://huggingface.co/haofeixu/depthsplat">Models</a> </h3>
+  <h1 align="center">Benchmarking Feed-Forward 3DGSh</h1>
   <div align="center"></div>
 </p>
-<p align="center">
-  <a href="">
-    <img src="https://haofeixu.github.io/depthsplat/assets/teaser.png" alt="Logo" width="100%">
-  </a>
-</p>
 
 
 <p align="center">
-<strong>DepthSplat enables cross-task interactions between Gaussian splatting and depth estimation.</strong> <br>
-Left: Better depth leads to improved novel view synthesis with Gaussian splatting. <br>
-Right: Unsupervised depth pre-training with Gaussian splatting leads to reduced depth prediction error.
+Pose-free feed-forward 3D Gaussian Splatting (3DGS) methods aim to predict 3D Gaussian parameters directly from sparse-view images without access to ground-truth camera poses. Compared to existing one-stage methods that directly regress Gaussian parameters, two-stage approaches first estimate camera poses and then apply pose-dependent 3DGS reconstruction techniques. In this work, we benchmark the performance of both strategies and further explore ways to adapt the pose-dependent DepthSplat method into a pose-free framework. Specifically, we propose two approaches: (1) calibrating the estimated poses into a consistent coordinate system and scale, and (2) applying a correspondences loss to refine noisy poses and fine-tune the DepthSplat model. Our results demonstrate that the finetuning approach is especially promising, requiring only a small amount of training data and no ground-truth pose supervision.
 </p>
-
-
-## Updates
-
-- 2025-03-27: We simplified our model architecture while preparing the CVPR camera-ready version. The models have been re-trained, and the [paper](https://arxiv.org/abs/2410.13862) has been updated accordingly. [The new models](MODEL_ZOO.md) are now simpler, faster, and perform as well as or better than the previous version.
 
 ## Installation
 
