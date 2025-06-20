@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 ## Pre-trained models
 
-Our pre-trained models can be downloaded from this [polybox link(TODO)]().
+Our pre-trained models can be downloaded from this [polybox link](https://polybox.ethz.ch/index.php/s/2cCrcS2tsAf9RnW).
 
 Put the `pretrained` directory under the root path of this project.
 
@@ -36,17 +36,17 @@ We use Re10k dataset. Firstly, please refer to [DepthSplat's DATASETS.md](https:
 
 Secondly, we use [VGGT](https://github.com/facebookresearch/vggt/tree/main) to process the Re10k data to estimate camera poses and depth maps. Please clone the [VGGT](https://github.com/facebookresearch/vggt/tree/main) code and replace its [TODO]() file with our provided [TODO]() file, and store the processed data at `datasets/vggt_re10k`.
 
-We provide a minimal example set of processed training and test data at this [polybox link(TODO)](). You can download the `datasets` directory and put it under the root path of this project for a quick validation.
+We provide a minimal example set of processed training and test data at this [polybox link](https://polybox.ethz.ch/index.php/s/2cCrcS2tsAf9RnW). You can download the `datasets` directory and put it under the root path of this project for a quick validation.
 
 
 ### Evaluation
 
-
-
 #### RealEstate10K
 
-<summary><b>To evaluate our fine-tuned model, use:</b></summary> -->
+We use the same camera views with DepthSplat and NoPoSplat for a fire comparison. 
 
+<summary><b>To evaluate our model on the specific camera views, use:</b></summary> 
+<detail>
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -59,33 +59,105 @@ test.save_gt_image=true \
 test.save_image=true
 
 ```
+</detail>
+
+According to NoPoSplat, we can divide the camera views as high/medium/small/ignore overlap degrees, we use the same view division protocals with NoPoSplat.
+
+<summary><b>To evaluate our model on the high camera views, use:</b></summary> 
+<detail>
+```
+CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
+dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
+model.encoder.lowest_feature_resolution=4 \
+checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+mode=test dataset/view_sampler=evaluation \
+dataset.view_sampler.index_path=assets/evaluation_index_re10k_high.json \
+test.save_input_images=true \
+test.save_gt_image=true \
+test.save_image=true
+
+```
+</detail>
+
+<summary><b>To evaluate our model on the medium camera views, use:</b></summary> 
+<detail>
+```
+CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
+dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
+model.encoder.lowest_feature_resolution=4 \
+checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+mode=test dataset/view_sampler=evaluation \
+dataset.view_sampler.index_path=assets/evaluation_index_re10k_medium.json \
+test.save_input_images=true \
+test.save_gt_image=true \
+test.save_image=true
+
+```
+</detail>
+
+<summary><b>To evaluate our model on the small camera views, use:</b></summary> 
+<detail>
+```
+CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
+dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
+model.encoder.lowest_feature_resolution=4 \
+checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+mode=test dataset/view_sampler=evaluation \
+dataset.view_sampler.index_path=assets/evaluation_index_re10k_small.json \
+test.save_input_images=true \
+test.save_gt_image=true \
+test.save_image=true
+
+```
+</detail>
+
+<summary><b>To evaluate our model on the ignore camera views, use:</b></summary> 
+<detail>
+```
+CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
+dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
+model.encoder.lowest_feature_resolution=4 \
+checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+mode=test dataset/view_sampler=evaluation \
+dataset.view_sampler.index_path=assets/evaluation_index_re10k_ignore.json \
+test.save_input_images=true \
+test.save_gt_image=true \
+test.save_image=true
+
+```
+</detail>
 
 ### Training
 
-- Before training, you need to download the pre-trained [UniMatch](https://github.com/autonomousvision/unimatch) and [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) weights, and set up your [wandb account](config/main.yaml) (in particular, by setting `wandb.entity=YOUR_ACCOUNT`) for logging.
+- Before training, you need to download the pre-trained [UniMatch](https://github.com/autonomousvision/unimatch) and [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) weights and [DepthSplat](https://github.com/cvg/depthsplat), and set up your [wandb account](config/main.yaml) (in particular, by setting `wandb.entity=YOUR_ACCOUNT`) for logging.
 
 ```
 wget https://s3.eu-central-1.amazonaws.com/avg-projects/unimatch/pretrained/gmflow-scale1-things-e9887eda.pth -P pretrained
 wget https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/main/depth_anything_v2_vits.pth -P pretrained
+wget https://huggingface.co/haofeixu/depthsplat/resolve/main/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth -P pretrained
 ```
 
-- By default, we train our models using four GH200 GPUs (96GB VRAM each). However, this is not a strict requirement—our model can be trained on different GPUs as well. For example, we have verified that configurations such as four RTX 4090 GPUs (24GB VRAM each) or a single A100 GPU (80GB VRAM) can achieve very similar results, with a PSNR difference of at most 0.1 dB. Just ensure that the total number of training samples, calculated as (number of GPUs &times; `data_loader.train.batch_size` &times; `trainer.max_steps`), remains the same. Check out the scripts [scripts/re10k_depthsplat_train.sh](scripts/re10k_depthsplat_train.sh) and [scripts/dl3dv_depthsplat_train.sh](scripts/dl3dv_depthsplat_train.sh) for details.
+If you have access to student-cluster, you can use:
+```
+batch run.sh
+```
+Or use:
+```
+CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
+data_loader.train.batch_size=1 dataset.test_chunk_interval=10 trainer.max_steps=4800000 \
+model.encoder.gaussian_adapter.gaussian_scale_max=0.3 model.encoder.upsample_factor=4 \
+model.encoder.lowest_feature_resolution=4 \
+checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth \
+output_dir=checkpoints/re10k-256x256-depthsplat-small checkpointing.every_n_train_steps=100000 \
+checkpointing.resume=False
+```
 
+## Other branches
 
-
-## Depth Prediction
-
-We fine-tune our Gaussian Splatting pre-trained depth model using ground-truth depth supervision. The depth models are trained with a randomly selected number of input images (ranging from 2 to 8) and can be used for depth prediction from multi-view posed images. For more details, please refer to [scripts/inference_depth.sh](scripts/inference_depth.sh).
-
-
-<p align="center">
-  <a href="">
-    <img src="https://haofeixu.github.io/depthsplat/assets/depth/img_depth_c31a5a509ab9c526.png" alt="Logo" width="100%">
-  </a>
-</p>
-
+We put the calibration-based method into `colmap` branch, and the correspondence loss feature into `corr` branch. Please check these branches' readme file and our report for more information.
 
 ## Citation
+This code repositories is modified from DepthSplat. So we keep the citation information of DepthSplat here.
 
 ```
 @inproceedings{xu2024depthsplat,
@@ -100,6 +172,6 @@ We fine-tune our Gaussian Splatting pre-trained depth model using ground-truth d
 
 ## Acknowledgements
 
-This project is developed with several fantastic repos: [pixelSplat](https://github.com/dcharatan/pixelsplat), [MVSplat](https://github.com/donydchen/mvsplat), [MVSplat360](https://github.com/donydchen/mvsplat360), [UniMatch](https://github.com/autonomousvision/unimatch), [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) and [DL3DV](https://github.com/DL3DV-10K/Dataset). We thank the original authors for their excellent work.
+This project is developed with several fantastic repos: [DepthSplat](https://github.com/cvg/depthsplat/tree/main), [pixelSplat](https://github.com/dcharatan/pixelsplat), [MVSplat](https://github.com/donydchen/mvsplat), [MVSplat360](https://github.com/donydchen/mvsplat360), [UniMatch](https://github.com/autonomousvision/unimatch), [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) and [DL3DV](https://github.com/DL3DV-10K/Dataset). We thank the original authors for their excellent work.
 
 
