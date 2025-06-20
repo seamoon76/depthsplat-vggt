@@ -47,6 +47,7 @@ We use the same camera views with DepthSplat and NoPoSplat for a fire comparison
 
 <details>
 <summary>To evaluate our model on the specific camera views, use:</summary> 
+
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -66,6 +67,7 @@ According to NoPoSplat, we can divide the camera views as high/medium/small/igno
 
 <details>
 <summary>To evaluate our model on the high camera views, use:</summary> 
+
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -76,13 +78,13 @@ dataset.view_sampler.index_path=assets/evaluation_index_re10k_high.json \
 test.save_input_images=true \
 test.save_gt_image=true \
 test.save_image=true
-
 ```
 </details>
 
 
 <details>
-<summary>To evaluate our model on the medium camera views, use:</summary> 
+<summary>To evaluate our model on the medium camera views, use:</summary>
+
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -99,7 +101,8 @@ test.save_image=true
 
 
 <details>
-<summary>To evaluate our model on the small camera views, use:</summary> 
+<summary>To evaluate our model on the small camera views, use:</summary>
+
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -117,6 +120,7 @@ test.save_image=true
 
 <details>
 <summary>To evaluate our model on the ignore camera views, use:</summary> 
+
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -127,7 +131,6 @@ dataset.view_sampler.index_path=assets/evaluation_index_re10k_ignore.json \
 test.save_input_images=true \
 test.save_gt_image=true \
 test.save_image=true
-
 ```
 </details>
 
