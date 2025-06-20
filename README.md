@@ -46,37 +46,7 @@ We provide a minimal example set of processed training and test data at this [po
 We use the same camera views with DepthSplat and NoPoSplat for a fire comparison. 
 
 <details>
-<summary>6 input views at 512x960 resolutions: click to expand the script</summary>
-
-- A preprocessed subset is provided to quickly run inference with our model, please refer to the details in [DATASETS.md](DATASETS.md).
-
-```
-# render video on re10k (need to have ffmpeg installed)
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=dl3dv \
-dataset.test_chunk_interval=1 \
-dataset.roots=[datasets/re10k_720p] \
-dataset.image_shape=[512,960] \
-dataset.ori_image_shape=[720,1280] \
-model.encoder.num_scales=2 \
-model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=8 \
-model.encoder.monodepth_vit_type=vitb \
-model.encoder.gaussian_adapter.gaussian_scale_max=0.1 \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-base-re10kdl3dv-448x768-randview2-6-f8ddd845.pth \
-mode=test \
-dataset/view_sampler=evaluation \
-dataset.view_sampler.num_context_views=6 \
-dataset.view_sampler.index_path=assets/re10k_ctx_6v_video.json \
-test.save_video=true \
-test.compute_scores=false \
-test.render_chunk_size=10 \
-output_dir=outputs/depthsplat-re10k-512x960
-```
-
-</details>
-
-<detail>
-  <summary>To evaluate our model on the specific camera views, use:</summary> 
+<summary>To evaluate our model on the specific camera views, use:</summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
@@ -89,12 +59,12 @@ test.save_gt_image=true \
 test.save_image=true
 
 ```
-</detail>
+</details>
 
 According to NoPoSplat, we can divide the camera views as high/medium/small/ignore overlap degrees, we use the same view division protocals with NoPoSplat.
 
 
-<detail>
+<details>
 <summary>To evaluate our model on the high camera views, use:</summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
@@ -108,10 +78,10 @@ test.save_gt_image=true \
 test.save_image=true
 
 ```
-</detail>
+</details>
 
 
-<detail>
+<details>
 <summary>To evaluate our model on the medium camera views, use:</summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
@@ -125,10 +95,10 @@ test.save_gt_image=true \
 test.save_image=true
 
 ```
-</detail>
+</details>
 
 
-<detail>
+<details>
 <summary>To evaluate our model on the small camera views, use:</summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
@@ -142,10 +112,10 @@ test.save_gt_image=true \
 test.save_image=true
 
 ```
-</detail>
+</details>
 
 
-<detail>
+<details>
 <summary>To evaluate our model on the ignore camera views, use:</summary> 
 ```
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
@@ -159,7 +129,7 @@ test.save_gt_image=true \
 test.save_image=true
 
 ```
-</detail>
+</details>
 
 ### Training
 
