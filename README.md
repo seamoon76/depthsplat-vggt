@@ -5,7 +5,7 @@
 
 ## Installation
 
-Our code is developed using PyTorch 2.4.0, CUDA 12.4, Python 3.10 and colmap 3.11.1. 
+Our code is developed using PyTorch 2.4.0, CUDA 12.4, Python 3.10 and [colmap 3.11.1](https://colmap.github.io). 
 
 We recommend setting up a virtual environment using either [conda](https://docs.anaconda.com/miniconda/) or [venv](https://docs.python.org/3/library/venv.html) before installation:
 
@@ -37,6 +37,52 @@ We use Re10k dataset. Firstly, please refer to [DepthSplat's DATASETS.md](https:
 Secondly, we use calibrated method to get the aligned extrinsics from VGGSfm / VGGT, please store the processed data at `datasets/re10k_vggsfm` or `datasets/re10k_norm`.
 
 We provide a minimal example set of processed training and test data at this [polybox link](https://polybox.ethz.ch/index.php/s/2cCrcS2tsAf9RnW). You can download the `datasets` directory and put it under the root path of this project for a quick validation.
+
+### COLMAP Camera Alignment and Normalization Tools
+
+This repository provides a set of scripts to **align COLMAP camera poses (extrinsics) with ground-truth poses**, particularly for outputs from [VGGSfM](https://github.com/facebookresearch/vggsfm) or [VGGT](https://github.com/facebookresearch/vggt).
+
+#### Usage
+
+##### Method 1: Direct Alignment (Raw COLMAP)
+
+1. Run VGGSfM/VGGT to get raw COLMAP output.
+2. Extract extrinsic matrices from COLMAP.
+3. Align COLMAP poses with ground truth poses from `.torch` using `alignment.sh`.
+4. Write aligned extrinsics to a new `.torch` file using `write_torch.py`.
+
+```bash
+# Extract camera intrinsics and extrinsics from COLMAP
+bash run_colmap2mvsnet.sh
+
+# Align raw COLMAP extrinsics with GT poses
+bash alignment.sh
+
+# Write aligned camera data into .torch file
+python write_torch.py --input_folder <output_dir> --output_path <scene>.torch
+```
+
+##### Method 2: Normalized Alignment
+
+1. Run VGGSfM/VGGT to get raw  COLMAP and normalize the model with `normalize_model.py`.
+2. Extract normalized extrinsics.
+3. Align with **normalized** ground-truth poses.
+4. Write normalized and aligned extrinsics into `.torch`.
+
+```bash
+# Normalize the COLMAP model
+python normalize_model.py --input_model <raw_model> --output_model <norm_model>
+
+# Extract camera intrinsics and extrinsics from COLMAP
+bash run_colmap2mvsnet.sh
+
+# Align normalized COLMAP with normalized GT
+bash alignment.sh
+
+# Write aligned normalized data into .torch file
+python write_torch.py --input_folder <norm_output_dir> --output_path <scene>_norm.torch
+```
+
 
 
 ### Evaluation
