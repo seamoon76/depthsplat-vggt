@@ -5,7 +5,7 @@
 
 ## Installation
 
-Our code is developed using PyTorch 2.4.0, CUDA 12.4, and Python 3.10. 
+Our code is developed using PyTorch 2.4.0, CUDA 12.4, Python 3.10 and colmap 3.11.1. 
 
 We recommend setting up a virtual environment using either [conda](https://docs.anaconda.com/miniconda/) or [venv](https://docs.python.org/3/library/venv.html) before installation:
 
@@ -34,7 +34,7 @@ Put the `pretrained` directory under the root path of this project.
 
 We use Re10k dataset. Firstly, please refer to [DepthSplat's DATASETS.md](https://github.com/cvg/depthsplat/blob/main/DATASETS.md) to download the Re10k dataset.
 
-Secondly, we use [VGGT](https://github.com/facebookresearch/vggt/tree/main) to process the Re10k data to estimate camera poses and depth maps. Please clone the [VGGT](https://github.com/facebookresearch/vggt/tree/main) code and replace its [TODO]() file with our provided [TODO]() file, and store the processed data at `datasets/vggt_re10k`.
+Secondly, we use calibrated method to get the aligned extrinsics from VGGSfm / VGGT, please store the processed data at `datasets/re10k_vggsfm` or `datasets/re10k_norm`.
 
 We provide a minimal example set of processed training and test data at this [polybox link](https://polybox.ethz.ch/index.php/s/2cCrcS2tsAf9RnW). You can download the `datasets` directory and put it under the root path of this project for a quick validation.
 
@@ -180,5 +180,4 @@ This code repository is modified from DepthSplat. So we keep the citation inform
 ## Acknowledgements
 
 This project is developed with several fantastic repos: [DepthSplat](https://github.com/cvg/depthsplat/tree/main), [pixelSplat](https://github.com/dcharatan/pixelsplat), [MVSplat](https://github.com/donydchen/mvsplat), [MVSplat360](https://github.com/donydchen/mvsplat360), [UniMatch](https://github.com/autonomousvision/unimatch), [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) and [DL3DV](https://github.com/DL3DV-10K/Dataset). We thank the original authors for their excellent work.
-
 

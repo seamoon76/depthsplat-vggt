@@ -1,9 +1,3 @@
-#################################################################
-# This file is modified from DepthSplat's open-sourced code
-# Reference: https://github.com/cvg/depthsplat/blob/main/src/dataset/dataset_re10k.py
-# We add code for reading estimated camera pose and depth map min/max, and code for rotation normalization
-#################################################################
-
 import json
 from dataclasses import dataclass
 from functools import cached_property
@@ -74,6 +68,7 @@ class DatasetRE10k(IterableDataset):
         if cfg.far != -1:
             self.far = cfg.far
 
+        self.debug=False
         # Collect chunks.
         self.chunks = []
         for i, root in enumerate(cfg.roots):
@@ -86,6 +81,8 @@ class DatasetRE10k(IterableDataset):
                 root_chunks = sorted(
                     [path for path in root.iterdir() if path.suffix == ".torch"]
                 )
+            if self.debug:
+                root_chunks = [root_chunks[0]]
 
             self.chunks.extend(root_chunks)
         if self.cfg.overfit_to_scene is not None:
@@ -113,12 +110,17 @@ class DatasetRE10k(IterableDataset):
                 for chunk_index, chunk in enumerate(self.chunks)
                 if chunk_index % worker_info.num_workers == worker_info.id
             ]
+        print(len(self.chunks))
         for chunk_path in self.chunks:
             # Load the chunk.
             chunk = torch.load(chunk_path,map_location='cpu')
             if self.cfg.overfit_to_scene is not None:
                 item = [x for x in chunk if x["key"] == self.cfg.overfit_to_scene]
                 assert len(item) == 1
+                chunk = item * len(chunk)
+            if self.debug:
+                item = [x for x in chunk if x["key"] == "5aca87f95a9412c6"]
+                assert len(item)==1
                 chunk = item * len(chunk)
 
             if self.stage in (("train", "val") if self.cfg.shuffle_val else ("train")):
@@ -132,16 +134,29 @@ class DatasetRE10k(IterableDataset):
 
             for run_idx in range(int(times_per_scene * len(chunk))):
                 example = chunk[run_idx // times_per_scene]
+                print(example["key"])
                 extrinsics, intrinsics = self.convert_poses(example["cameras"])
-                extrinsics_vggt_finetune, intrinsics_vggt_finetune = self.convert_poses(example["vggt_camera"])
-                far_near_vggt_finetune = example["depth"]
+                # extrinsics_vggt_finetune, intrinsics_vggt_finetune = self.convert_poses(example["vggt_camera"])
+                # far_near_vggt_finetune = example["depth"]
                 scene = example["key"]
+                camera_vggt_aligned, _ = self.convert_poses(example["vggt_camera_aligned"])
+                camera_vggt_norm, _ = self.convert_poses(example["vggt_camera_norm"])
+                camera_norm_vggt_norm, _ = self.convert_poses(example["vggt_camera_norm2"])
+                
+                # TODO: load your colmap aligned data as extrinsics_vggt, you can skip this run_idx of scene if no colmap aligned data in this scene, like below
                 try:
                     context_indices, target_indices = self.view_sampler.sample(
                         scene,
                         extrinsics,
                         intrinsics,
                     )
+                    if self.debug:
+                        print(context_indices)
+                        context_indices = torch.tensor([58,70])
+                    # TODO:set context_indices to 58,70
+                    if self.stage == "test":
+                        context_indices = torch.tensor([58,70])
+                    
                 except ValueError:
                     # Skip because the example doesn't have enough frames.
                     continue
@@ -160,7 +175,8 @@ class DatasetRE10k(IterableDataset):
                 ]
                 target_images = self.convert_images(target_images)
                 # load the far and near
-                if "depth" in example.keys():
+                use_vggt_near_far=False
+                if "depth" in example.keys() and use_vggt_near_far:
                     context_fars = torch.tensor([example["depth"][index.item()][0] for index in context_indices])
                     context_nears = torch.tensor([example["depth"][index.item()][1] for index in context_indices])
                     target_fars = torch.tensor([example["depth"][index.item()][0] for index in target_indices])
@@ -185,33 +201,51 @@ class DatasetRE10k(IterableDataset):
                         f"{target_images.shape}."
                     )
                     continue
-                
+                # normalize GT extrinsics and VGGT extrinsics
                 camera_norm_matrix = extrinsics[context_indices[0]].unsqueeze(0).inverse()
                 extrinsics = torch.bmm(camera_norm_matrix.repeat(extrinsics.shape[0], 1, 1), extrinsics)
-                camera_norm_matrix_vggt_finetune = extrinsics_vggt_finetune[context_indices[0]].unsqueeze(0).inverse()
-                extrinsics_vggt_finetune = torch.bmm(camera_norm_matrix_vggt_finetune.repeat(extrinsics_vggt_finetune.shape[0], 1, 1), extrinsics_vggt_finetune)
-                nf_scale = 1.0
+                   
+                camera_norm_matrix = extrinsics_vggt_aligned[0].unsqueeze(0).inverse()
+                extrinsics_vggt_aligned = torch.bmm(camera_norm_matrix.repeat(extrinsics_vggt_aligned.shape[0], 1, 1), extrinsics_vggt_aligned)
+                extrinsics_vggt_aligned = extrinsics_vggt_aligned.inverse()
+                extrinsics_vggt_norm = extrinsics_vggt_norm.inverse()
                 
+                camera_norm_matrix = extrinsics_vggsfm_aligned[0].unsqueeze(0).inverse()
+                extrinsics_vggsfm_aligned = torch.bmm(camera_norm_matrix.repeat(extrinsics_vggsfm_aligned.shape[0], 1, 1), extrinsics_vggsfm_aligned)
+                extrinsics_vggsfm_aligned = extrinsics_vggsfm_aligned.inverse()
+                extrinsics_vggsfm_norm = extrinsics_vggsfm_norm.inverse()
+                
+                camera_norm_matrix = camera_vggt_aligned[0].unsqueeze(0).inverse()
+                camera_vggt_aligned = torch.bmm(camera_norm_matrix.repeat(camera_vggt_aligned.shape[0], 1, 1), camera_vggt_aligned)
+                camera_norm_matrix = camera_vggt_norm[0].unsqueeze(0).inverse()
+                camera_vggt_norm = torch.bmm(camera_norm_matrix.repeat(camera_vggt_norm.shape[0], 1, 1), camera_vggt_norm)
+                camera_norm_matrix = camera_norm_vggt_norm[0].unsqueeze(0).inverse()
+                camera_norm_vggt_norm = torch.bmm(camera_norm_matrix.repeat(camera_norm_vggt_norm.shape[0], 1, 1), camera_norm_vggt_norm)
+
+
                 example = {
                     "context": {
-                        "extrinsics": extrinsics_vggt_finetune[context_indices],
+                        "extrinsics": camera_vggt_aligned[0:2],
                         "intrinsics": intrinsics[context_indices],
                         "image": context_images,
                         "raw_image": context_images,
+                        "raw_extrinsics": extrinsics[context_indices],
+                        "raw_intrinsics": intrinsics[context_indices],
                         "near": context_nears,
                         "far": context_fars,
                         "index": context_indices,
                     },
                     "target": {
-                        "extrinsics": extrinsics_vggt_finetune[target_indices],
+                        "extrinsics": extrinsics[target_indices],# already noralized
                         "intrinsics": intrinsics[target_indices],
                         "image": target_images,
                         "near": target_nears,
                         "far": target_fars,
                         "index": target_indices,
                     },
-                    "scene": scene
+                    "scene": scene,
                 }
+
                 if self.stage == "train" and self.cfg.augment:
                     example = apply_augmentation_shim(example)
                 yield apply_crop_shim(example, tuple(self.cfg.image_shape))
