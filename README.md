@@ -134,25 +134,6 @@ test.save_image=true
 ```
 </details>
 
-Our model is fine-tuned with only 1/60 of training data, we also train a fine-tuned model with full training data to demenstrate that our method can achieve comparable accuray with little data.
-
-<details>
-<summary>To evaluate our model trained on full training data, use:</summary> 
-
-```
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
-dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_model=pretrained/epoch_18-step_150000.ckpt \
-mode=test dataset/view_sampler=evaluation \
-dataset.view_sampler.index_path=assets/evaluation_index_re10k.json \
-test.save_input_images=true \
-test.save_gt_image=true \
-test.save_image=true
-
-```
-</details>
-
 ### Training
 
 - Before training, you need to download the pre-trained [UniMatch](https://github.com/autonomousvision/unimatch) and [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) weights and [DepthSplat](https://github.com/cvg/depthsplat), and set up your [wandb account](config/main.yaml) (in particular, by setting `wandb.entity=YOUR_ACCOUNT`) for logging.
