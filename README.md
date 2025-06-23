@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">Benchmarking Feed-Forward 3DGSh</h1>
+  <h1 align="center">Benchmarking Feed-Forward 3DGS</h1>
   <div align="center"></div>
 </p>
 
