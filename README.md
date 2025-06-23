@@ -22,6 +22,7 @@ conda activate depthsplat
 pip install torch==2.4.0 torchvision==0.19.0 --index-url https://download.pytorch.org/whl/cu124
 pip install -r requirements.txt
 ```
+Install colmap v3.11.1 following [colmap doc](https://colmap.github.io/install.html).
 
 ## Pre-trained models
 
