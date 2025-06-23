@@ -99,7 +99,7 @@ We use the same camera views with DepthSplat and NoPoSplat for a fire comparison
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
 model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth \
 mode=test dataset/view_sampler=evaluation \
 dataset.view_sampler.index_path=assets/evaluation_index_re10k.json \
 test.save_input_images=true \
@@ -119,7 +119,7 @@ According to NoPoSplat, we can divide the camera views as high/medium/small/igno
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
 model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth \
 mode=test dataset/view_sampler=evaluation \
 dataset.view_sampler.index_path=assets/evaluation_index_re10k_high.json \
 test.save_input_images=true \
@@ -136,7 +136,7 @@ test.save_image=true
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
 model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth \
 mode=test dataset/view_sampler=evaluation \
 dataset.view_sampler.index_path=assets/evaluation_index_re10k_medium.json \
 test.save_input_images=true \
@@ -154,7 +154,7 @@ test.save_image=true
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
 model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth \
 mode=test dataset/view_sampler=evaluation \
 dataset.view_sampler.index_path=assets/evaluation_index_re10k_small.json \
 test.save_input_images=true \
@@ -172,7 +172,7 @@ test.save_image=true
 CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
 dataset.test_chunk_interval=1 model.encoder.upsample_factor=4 \
 model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_model=pretrained/epoch_212-step_277951.ckpt \
+checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth \
 mode=test dataset/view_sampler=evaluation \
 dataset.view_sampler.index_path=assets/evaluation_index_re10k_ignore.json \
 test.save_input_images=true \
@@ -183,32 +183,11 @@ test.save_image=true
 
 ### Training
 
-- Before training, you need to download the pre-trained [UniMatch](https://github.com/autonomousvision/unimatch) and [Depth Anything V2](https://github.com/DepthAnything/Depth-Anything-V2) weights and [DepthSplat](https://github.com/cvg/depthsplat), and set up your [wandb account](config/main.yaml) (in particular, by setting `wandb.entity=YOUR_ACCOUNT`) for logging.
-
-```
-wget https://s3.eu-central-1.amazonaws.com/avg-projects/unimatch/pretrained/gmflow-scale1-things-e9887eda.pth -P pretrained
-wget https://huggingface.co/depth-anything/Depth-Anything-V2-Small/resolve/main/depth_anything_v2_vits.pth -P pretrained
-wget https://huggingface.co/haofeixu/depthsplat/resolve/main/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth -P pretrained
-```
-
-If you have access to student-cluster, you can use:
-```
-batch run.sh
-```
-Or use:
-```
-CUDA_VISIBLE_DEVICES=0 python -m src.main +experiment=re10k \
-data_loader.train.batch_size=1 dataset.test_chunk_interval=10 trainer.max_steps=4800000 \
-model.encoder.gaussian_adapter.gaussian_scale_max=0.3 model.encoder.upsample_factor=4 \
-model.encoder.lowest_feature_resolution=4 \
-checkpointing.pretrained_model=pretrained/depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth \
-output_dir=checkpoints/re10k-256x256-depthsplat-small checkpointing.every_n_train_steps=100000 \
-checkpointing.resume=False
-```
+- This calibrated pose method does not require training. We directly use pretrained DepthSplat weights depthsplat-gs-small-re10k-256x256-view2-cfeab6b1.pth.
 
 ## Other branches
 
-We put the calibration-based method into `colmap` branch, and the correspondence loss feature into `corr` branch. Please check these branches' readme file and our report for more information.
+We put the fine-tuned method into `main` branch, and the correspondence loss feature into `corr` branch. Please check these branches' readme file and our report for more information.
 
 ## Citation
 This code repository is modified from DepthSplat. So we keep the citation information of DepthSplat here.
