@@ -19,7 +19,7 @@ import torch.nn.functional as F
 
 from .unimatch.mv_unimatch import MultiViewUniMatch
 from .unimatch.dpt_head import DPTHead
-from .utils import PoseAdjustHead, rotation_6d_to_matrix
+from .utils import PoseAdjustHead, rotation_6d_to_matrix, CameraHead, pose_encoding_to_extri_intri
 import pdb
 
 @dataclass
@@ -105,7 +105,8 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
         self.gaussian_adapter = GaussianAdapter(cfg.gaussian_adapter)
         self.cfg.pose_opt=True
         if self.cfg.pose_opt:
-            self.pose_adjuster = PoseAdjustHead(in_channels=64)
+            # self.pose_adjuster = PoseAdjustHead(in_channels=64)
+            self.pose_adjuster = CameraHead(input_channels=132)
             self.register_buffer("identity", torch.tensor([1.0, 0.0, 0.0, 0.0, 1.0, 0.0]))
         # concat(img, depth, match_prob, features)
         in_channels = 3 + 1 + 1 + feature_upsampler_channels
@@ -218,21 +219,6 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
                                           0] if self.cfg.num_scales == 1 else results_dict["features_mv"][::-1]
                                           )
 
-        camtoworlds = None
-        if self.cfg.pose_opt:
-            # https://github.com/nerfstudio-project/gsplat/blob/main/examples/utils.py
-            pose_deltas = self.pose_adjuster(features)  # [B, 9]
-            camtoworlds = context["extrinsics"] # [B,2,4,4]
-            batch_dims = camtoworlds.shape[:-2]
-            dx, drot = pose_deltas[..., :3], pose_deltas[..., 3:]
-            rot = rotation_6d_to_matrix(
-                drot + self.identity.expand(*batch_dims, -1)
-            )  # (..., 3, 3)
-            transform = torch.eye(4, device=pose_deltas.device).repeat((*batch_dims, 1, 1))
-            transform[..., :3, :3] = rot
-            transform[..., :3, 3] = dx
-            camtoworlds = torch.matmul(camtoworlds, transform)
-            context["extrinsics"][:,1] = camtoworlds[:,1]
         # match prob from softmax
         # [BV, D, H, W] in feature resolution
         match_prob = results_dict['match_probs'][-1]
@@ -257,7 +243,28 @@ class EncoderDepthSplat(Encoder[EncoderDepthSplatCfg]):
                     features,
                     match_prob]
 
-        out = torch.cat(concat, dim=1)
+        out = torch.cat(concat, dim=1) # [2, 132, H, W]
+
+        camtoworlds = None
+        if self.cfg.pose_opt:
+            # https://github.com/nerfstudio-project/gsplat/blob/main/examples/utils.py
+            pose_deltas = self.pose_adjuster(out)[-1]  # [B, 9]
+            camtoworlds = context["extrinsics"] # [B,2,4,4]
+            batch_dims = camtoworlds.shape[:-2]
+            # PoseAdjust Head
+            # dx, drot = pose_deltas[..., :3], pose_deltas[..., 3:]
+            # rot = rotation_6d_to_matrix(
+            #     drot + self.identity.expand(*batch_dims, -1)
+            # )  # (..., 3, 3)
+            transform = torch.eye(4, device=pose_deltas.device).repeat((*batch_dims, 1, 1))
+            # transform[..., :3, :3] = rot
+            # transform[..., :3, 3] = dx
+            
+            # VGGT Camera Head
+            extriniscs_delta, intrinsic = pose_encoding_to_extri_intri(pose_deltas, context["image"].shape[-2:]) # [2, 1, 3, 4]
+            transform[..., :3, :] = extriniscs_delta.squeeze(1)
+            camtoworlds = torch.matmul(camtoworlds, transform)
+            context["extrinsics"][:,1] = camtoworlds[:,1]
 
         gaussians = self.gaussian_head(out)  # [BV, C, H, W]
 
