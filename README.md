@@ -34,7 +34,7 @@ Put the `pretrained` directory under the root path of this project.
 
 We use Re10k dataset. Firstly, please refer to [DepthSplat's DATASETS.md](https://github.com/cvg/depthsplat/blob/main/DATASETS.md) to download the Re10k dataset.
 
-Secondly, we use [VGGT](https://github.com/facebookresearch/vggt/tree/main) to process the Re10k data to estimate camera poses and depth maps. Please clone the [VGGT](https://github.com/facebookresearch/vggt/tree/main) code and replace its [TODO]() file with our provided [TODO]() file, and store the processed data at `datasets/vggt_re10k`.
+Secondly, we use [VGGT](https://github.com/facebookresearch/vggt/tree/main) to process the Re10k data to estimate camera poses and depth maps. Please clone the [VGGT](https://github.com/facebookresearch/vggt/tree/main) code and put `process_re10k.py` file under cloned `vggt` floder. Run `python process_re10k.py` will automatically store the processed data at `datasets/vggt_re10k`.
 
 We provide a minimal example set of processed training and test data at this [polybox link](https://polybox.ethz.ch/index.php/s/2cCrcS2tsAf9RnW). You can download the `datasets` directory and put it under the root path of this project for a quick validation.
 
