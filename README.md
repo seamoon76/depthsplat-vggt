@@ -66,7 +66,7 @@ checkpointing.resume=False
 
 ## Other branches
 
-We put the calibration-based method into `colmap-new` branch, and the correspondence loss feature into `corr` branch. Please check these branches' readme file and our report for more information.
+We put the calibration-based method into `colmap-new` branch. Please check this branch's readme file and our report for more information.
 
 ## Citation
 This code repository is modified from DepthSplat. So we keep the citation information of DepthSplat here.
